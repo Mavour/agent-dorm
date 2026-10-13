@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Dorm — Room 01</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header id="hud">
+  <div class="hud-left">
+    <strong>Agent Dorm</strong>
+    <span class="muted">Room 01</span>
+    <span id="demo-chip" class="chip chip-amber" hidden>DEMO DATA</span>
+  </div>
+  <div class="hud-right">
+    <span id="clock" class="mono">--:--</span>
+    <span id="sync" class="muted mono">sinkron --:--:--</span>
+    <span id="conn" class="dot dot-amber" title="Koneksi"></span>
+    <button id="demo-btn" class="demo-btn" hidden>DEMO</button>
+  </div>
+</header>
+
+<main id="viewport">
+  <div id="stage">
+    <img id="bg" alt="Latar asrama">
+    <div id="chars"></div>
+  </div>
+  <div id="ui-layer"></div>
+</main>
+
+<div id="hint" class="muted">Klik karakter untuk melihat status — klik area kosong untuk menutup</div>
+
+<div id="popup-root"></div>
+<div id="demo-root"></div>
+<div id="debug" hidden></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
