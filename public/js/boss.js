@@ -61,11 +61,21 @@ export function createBoss(stage, store, bubbles, manifest) {
 
   bubbles.register('boss', () => ({ x: seat.x, y: seat.y }), h);
 
+  // Timer pengaman: kembali idle kalau tidak ada pesan bos baru dalam
+  // durationMs + 1500 ms (pesan hilang / reconnect). seq mencegah replay
+  // bubble lama dari snapshot_all.
+  let lastSeq = 0;
+  let safety = null;
   store.subscribe((kind, payload) => {
     if (kind === 'boss') {
       const b = payload.boss;
       setSprite(b.state);
-      if (b.bubble) bubbles.say('boss', b.bubble);
+      const seq = b.seq || 0;
+      if (seq <= lastSeq) return;
+      lastSeq = seq;
+      if (b.bubble) bubbles.sayLatest('boss', b.bubble);
+      if (safety) clearTimeout(safety);
+      safety = setTimeout(() => setSprite('idle'), (b.durationMs || 6000) + 1500);
     }
   });
 

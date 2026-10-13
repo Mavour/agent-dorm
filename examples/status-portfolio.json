@@ -1,7 +1,7 @@
 {
   "agentId": "portfolio",
   "status": "ok",
-  "updatedAt": "2026-10-13T08:30:13.554Z",
+  "updatedAt": "2026-10-13T09:06:19.164Z",
   "headline": "Portofolio stabil, pengeluaran hemat",
   "metrics": {
     "currency": "USD",
@@ -34,29 +34,29 @@
     ],
     "cashflow": {
       "todayIncomeUsd": 0,
-      "todayExpenseUsd": 2.74,
+      "todayExpenseUsd": 2.64,
       "last7dIncomeUsd": 54.19,
-      "last7dExpenseUsd": 26.83,
+      "last7dExpenseUsd": 26.73,
       "last30dIncomeUsd": 229.2,
-      "last30dExpenseUsd": 157.12
+      "last30dExpenseUsd": 157.02
     },
     "budget": {
       "dailyUsd": 9,
       "monthlyUsd": 270,
-      "monthSpentUsd": 66.72
+      "monthSpentUsd": 66.62
     },
     "transactions": [
       {
         "id": "tx-today-2",
-        "ts": "2026-10-13T06:30:13.554Z",
+        "ts": "2026-10-13T07:06:19.163Z",
         "kind": "expense",
         "category": "Transport",
-        "amountUsd": 0.89,
+        "amountUsd": 0.79,
         "note": "Ojek"
       },
       {
         "id": "tx-today-1",
-        "ts": "2026-10-13T03:30:13.554Z",
+        "ts": "2026-10-13T04:06:19.163Z",
         "kind": "expense",
         "category": "Makan",
         "amountUsd": 1.85,
@@ -64,7 +64,7 @@
       },
       {
         "id": "tx-in-3",
-        "ts": "2026-10-11T03:30:13.554Z",
+        "ts": "2026-10-11T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 21.77,
@@ -72,7 +72,7 @@
       },
       {
         "id": "tx-3-0",
-        "ts": "2026-10-10T16:30:13.554Z",
+        "ts": "2026-10-10T17:06:19.163Z",
         "kind": "expense",
         "category": "Transport",
         "amountUsd": 8.24,
@@ -80,7 +80,7 @@
       },
       {
         "id": "tx-4-0",
-        "ts": "2026-10-10T02:30:13.554Z",
+        "ts": "2026-10-10T03:06:19.163Z",
         "kind": "expense",
         "category": "Server/VPS",
         "amountUsd": 10.95,
@@ -88,7 +88,7 @@
       },
       {
         "id": "tx-in-6",
-        "ts": "2026-10-08T03:30:13.554Z",
+        "ts": "2026-10-08T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 13.48,
@@ -96,7 +96,7 @@
       },
       {
         "id": "tx-6-0",
-        "ts": "2026-10-07T18:30:13.554Z",
+        "ts": "2026-10-07T19:06:19.163Z",
         "kind": "expense",
         "category": "Belanja",
         "amountUsd": 2.79,
@@ -104,7 +104,7 @@
       },
       {
         "id": "tx-tr-7",
-        "ts": "2026-10-06T23:30:13.554Z",
+        "ts": "2026-10-07T00:06:19.163Z",
         "kind": "income",
         "category": "Trading",
         "amountUsd": 18.94,
@@ -112,7 +112,7 @@
       },
       {
         "id": "tx-7-0",
-        "ts": "2026-10-06T18:30:13.554Z",
+        "ts": "2026-10-06T19:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 2.11,
@@ -120,7 +120,7 @@
       },
       {
         "id": "tx-8-0",
-        "ts": "2026-10-06T00:30:13.554Z",
+        "ts": "2026-10-06T01:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 5.74,
@@ -128,7 +128,7 @@
       },
       {
         "id": "tx-in-9",
-        "ts": "2026-10-05T03:30:13.554Z",
+        "ts": "2026-10-05T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 10.73,
@@ -136,7 +136,7 @@
       },
       {
         "id": "tx-9-0",
-        "ts": "2026-10-04T22:30:13.554Z",
+        "ts": "2026-10-04T23:06:19.163Z",
         "kind": "expense",
         "category": "Transport",
         "amountUsd": 4.9,
@@ -144,7 +144,7 @@
       },
       {
         "id": "tx-9-1",
-        "ts": "2026-10-04T16:30:13.554Z",
+        "ts": "2026-10-04T17:06:19.163Z",
         "kind": "expense",
         "category": "Makan",
         "amountUsd": 5.75,
@@ -152,7 +152,7 @@
       },
       {
         "id": "tx-10-1",
-        "ts": "2026-10-04T02:30:13.554Z",
+        "ts": "2026-10-04T03:06:19.163Z",
         "kind": "expense",
         "category": "Server/VPS",
         "amountUsd": 4.01,
@@ -160,7 +160,7 @@
       },
       {
         "id": "tx-10-0",
-        "ts": "2026-10-04T01:30:13.554Z",
+        "ts": "2026-10-04T02:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 8.26,
@@ -168,7 +168,7 @@
       },
       {
         "id": "tx-11-0",
-        "ts": "2026-10-03T02:30:13.554Z",
+        "ts": "2026-10-03T03:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 5.78,
@@ -176,7 +176,7 @@
       },
       {
         "id": "tx-in-12",
-        "ts": "2026-10-02T03:30:13.554Z",
+        "ts": "2026-10-02T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 18.23,
@@ -184,7 +184,7 @@
       },
       {
         "id": "tx-13-0",
-        "ts": "2026-10-01T02:30:13.554Z",
+        "ts": "2026-10-01T03:06:19.163Z",
         "kind": "expense",
         "category": "Server/VPS",
         "amountUsd": 5.45,
@@ -192,7 +192,7 @@
       },
       {
         "id": "tx-tr-14",
-        "ts": "2026-09-29T23:30:13.554Z",
+        "ts": "2026-09-30T00:06:19.163Z",
         "kind": "income",
         "category": "Trading",
         "amountUsd": 19.34,
@@ -200,7 +200,7 @@
       },
       {
         "id": "tx-in-15",
-        "ts": "2026-09-29T03:30:13.554Z",
+        "ts": "2026-09-29T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 10.15,
@@ -208,7 +208,7 @@
       },
       {
         "id": "tx-15-0",
-        "ts": "2026-09-28T22:30:13.554Z",
+        "ts": "2026-09-28T23:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 7.71,
@@ -216,7 +216,7 @@
       },
       {
         "id": "tx-16-0",
-        "ts": "2026-09-27T19:30:13.554Z",
+        "ts": "2026-09-27T20:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 10.96,
@@ -224,7 +224,7 @@
       },
       {
         "id": "tx-in-18",
-        "ts": "2026-09-26T03:30:13.554Z",
+        "ts": "2026-09-26T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 11.61,
@@ -232,7 +232,7 @@
       },
       {
         "id": "tx-18-0",
-        "ts": "2026-09-25T18:30:13.554Z",
+        "ts": "2026-09-25T19:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 10.41,
@@ -240,7 +240,7 @@
       },
       {
         "id": "tx-19-0",
-        "ts": "2026-09-24T16:30:13.554Z",
+        "ts": "2026-09-24T17:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 7.3,
@@ -248,7 +248,7 @@
       },
       {
         "id": "tx-20-0",
-        "ts": "2026-09-24T00:30:13.554Z",
+        "ts": "2026-09-24T01:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 6.75,
@@ -256,7 +256,7 @@
       },
       {
         "id": "tx-20-1",
-        "ts": "2026-09-23T18:30:13.554Z",
+        "ts": "2026-09-23T19:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 3.11,
@@ -264,7 +264,7 @@
       },
       {
         "id": "tx-in-21",
-        "ts": "2026-09-23T03:30:13.554Z",
+        "ts": "2026-09-23T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 19.73,
@@ -272,7 +272,7 @@
       },
       {
         "id": "tx-21-0",
-        "ts": "2026-09-23T01:30:13.554Z",
+        "ts": "2026-09-23T02:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 8.08,
@@ -280,7 +280,7 @@
       },
       {
         "id": "tx-tr-21",
-        "ts": "2026-09-22T23:30:13.554Z",
+        "ts": "2026-09-23T00:06:19.163Z",
         "kind": "income",
         "category": "Trading",
         "amountUsd": 38.62,
@@ -288,7 +288,7 @@
       },
       {
         "id": "tx-22-0",
-        "ts": "2026-09-22T03:30:13.554Z",
+        "ts": "2026-09-22T04:06:19.163Z",
         "kind": "expense",
         "category": "Server/VPS",
         "amountUsd": 9.68,
@@ -296,7 +296,7 @@
       },
       {
         "id": "tx-22-1",
-        "ts": "2026-09-21T22:30:13.554Z",
+        "ts": "2026-09-21T23:06:19.163Z",
         "kind": "expense",
         "category": "Lainnya",
         "amountUsd": 6.07,
@@ -304,7 +304,7 @@
       },
       {
         "id": "tx-23-0",
-        "ts": "2026-09-20T23:30:13.554Z",
+        "ts": "2026-09-21T00:06:19.163Z",
         "kind": "expense",
         "category": "Makan",
         "amountUsd": 2.82,
@@ -312,7 +312,7 @@
       },
       {
         "id": "tx-in-24",
-        "ts": "2026-09-20T03:30:13.554Z",
+        "ts": "2026-09-20T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 21.23,
@@ -320,7 +320,7 @@
       },
       {
         "id": "tx-26-0",
-        "ts": "2026-09-17T22:30:13.554Z",
+        "ts": "2026-09-17T23:06:19.163Z",
         "kind": "expense",
         "category": "Belanja",
         "amountUsd": 5.01,
@@ -328,7 +328,7 @@
       },
       {
         "id": "tx-in-27",
-        "ts": "2026-09-17T03:30:13.554Z",
+        "ts": "2026-09-17T04:06:19.163Z",
         "kind": "income",
         "category": "Fee LP",
         "amountUsd": 8.82,
@@ -336,7 +336,7 @@
       },
       {
         "id": "tx-tr-28",
-        "ts": "2026-09-15T23:30:13.554Z",
+        "ts": "2026-09-16T00:06:19.163Z",
         "kind": "income",
         "category": "Trading",
         "amountUsd": 16.55,
@@ -344,7 +344,7 @@
       },
       {
         "id": "tx-28-0",
-        "ts": "2026-09-15T23:30:13.554Z",
+        "ts": "2026-09-16T00:06:19.163Z",
         "kind": "expense",
         "category": "Transport",
         "amountUsd": 7.96,
@@ -352,7 +352,7 @@
       },
       {
         "id": "tx-29-0",
-        "ts": "2026-09-14T16:30:13.554Z",
+        "ts": "2026-09-14T17:06:19.163Z",
         "kind": "expense",
         "category": "Langganan",
         "amountUsd": 4.54,

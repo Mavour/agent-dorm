@@ -13,8 +13,8 @@ export function registerWs(app, { store, boss }) {
       broadcast({ type: 'agent_update', agentId: msg.agentId, snapshot: msg.snapshot });
     } else if (msg.type === 'event') {
       broadcast({ type: 'event', event: msg.event });
-      const reaction = boss.onEvent(msg.event);
-      if (reaction) broadcast({ type: 'boss', ...reaction });
+      // Satu jalur broadcast: onEvent tidak me-return; reaksi disiarkan via onBoss.
+      boss.onEvent(msg.event);
     }
   });
 

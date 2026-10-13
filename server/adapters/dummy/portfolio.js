@@ -3,6 +3,8 @@
  * pengeluaran hari ini hemat, lalu boros setelah t+100s.
  */
 import { mulberry32, nowIso, eventId, registerDemoHandler, unregisterDemoHandler } from './engine.js';
+import { spendingTone } from '../../services/advisor/spend-metrics.js';
+import { dailyReport } from '../../services/advisor/rules-advisor.js';
 
 const CATS = ['Makan', 'Transport', 'Langganan', 'Server/VPS', 'Belanja', 'Lainnya'];
 
@@ -78,7 +80,7 @@ export function createPortfolioDummy(opts = {}) {
       ts: new Date(today.getTime() - 2 * 3600000).toISOString(),
       kind: 'expense',
       category: 'Transport',
-      amountUsd: 0.89,
+      amountUsd: 0.79,
       note: 'Ojek',
     });
     transactions.sort((a, b) => (a.ts < b.ts ? 1 : -1));
@@ -110,25 +112,37 @@ export function createPortfolioDummy(opts = {}) {
 
   function snapshot() {
     const cf = sums();
+    const metrics = {
+      currency: 'USD',
+      netWorthUsd: r2(12480 + (rnd() - 0.5) * 40),
+      accounts: [
+        { id: 'acc-stable', label: 'Stablecoin Wallet', type: 'stable', valueUsd: 3200 },
+        { id: 'acc-lp', label: 'LP Positions', type: 'lp', valueUsd: 7100 },
+        { id: 'acc-spot', label: 'Spot SOL', type: 'spot', valueUsd: 1780 },
+        { id: 'acc-cash', label: 'Cash', type: 'cash', valueUsd: 400 },
+      ],
+      cashflow: cf,
+      budget: { dailyUsd: 9, monthlyUsd: 270, monthSpentUsd: monthSpent },
+      transactions: transactions.slice(0, 60),
+    };
+    // Nada dari sumber tunggal yang sama dengan advisor (hemat/boros sepakat).
+    const probe = { agentId: 'portfolio', status: 'ok', updatedAt: nowIso(), headline: '', metrics, alerts: [], events: [] };
+    const { tone } = spendingTone(probe);
     return {
       agentId: 'portfolio',
-      status: 'ok',
+      status: tone === 'warn' ? 'warn' : 'ok',
       updatedAt: nowIso(),
-      headline: 'Portofolio stabil, pengeluaran hemat',
-      metrics: {
-        currency: 'USD',
-        netWorthUsd: r2(12480 + (rnd() - 0.5) * 40),
-        accounts: [
-          { id: 'acc-stable', label: 'Stablecoin Wallet', type: 'stable', valueUsd: 3200 },
-          { id: 'acc-lp', label: 'LP Positions', type: 'lp', valueUsd: 7100 },
-          { id: 'acc-spot', label: 'Spot SOL', type: 'spot', valueUsd: 1780 },
-          { id: 'acc-cash', label: 'Cash', type: 'cash', valueUsd: 400 },
-        ],
-        cashflow: cf,
-        budget: { dailyUsd: 9, monthlyUsd: 270, monthSpentUsd: monthSpent },
-        transactions: transactions.slice(0, 60),
-      },
-      alerts: [],
+      headline:
+        tone === 'warn'
+          ? 'Pengeluaran boros, kurangi jajan!'
+          : tone === 'good'
+            ? 'Portofolio stabil, pengeluaran hemat'
+            : 'Portofolio stabil, pengeluaran normal',
+      metrics,
+      alerts:
+        tone === 'warn'
+          ? [{ id: 'spend-over', level: 'warn', message: 'Pengeluaran melebihi rata-rata', ts: nowIso() }]
+          : [],
       events: [],
     };
   }
@@ -137,8 +151,10 @@ export function createPortfolioDummy(opts = {}) {
     if (ctx) ctx.publishSnapshot('portfolio', snapshot());
   }
 
-  function publishReport(tone) {
+  function publishReport() {
     reportCount += 1;
+    const snap = snapshot();
+    const rep = dailyReport(snap);
     ctx.publishEvent({
       id: eventId(`evt-report-${reportCount}`),
       ts: nowIso(),
@@ -146,9 +162,9 @@ export function createPortfolioDummy(opts = {}) {
       level: 'info',
       message: 'Rapor harian sudah siap.',
       agentId: 'portfolio',
-      data: { tone, title: 'Rapor harian', reportNo: reportCount },
+      data: { tone: rep.tone, title: rep.title, text: rep.text, reportNo: reportCount },
     });
-    publish();
+    ctx.publishSnapshot('portfolio', snap);
   }
 
   function addExpense(amount, category, note) {
@@ -174,7 +190,7 @@ export function createPortfolioDummy(opts = {}) {
       seedTx();
       publish();
       timer = setInterval(publish, 5000 / speed);
-      later(50000, () => publishReport('good'));
+      later(50000, () => publishReport());
       later(100000, () => {
         if (!bigExpenseDone) {
           bigExpenseDone = true;
@@ -183,7 +199,7 @@ export function createPortfolioDummy(opts = {}) {
       });
       registerDemoHandler('portfolio', (action) => {
         if (action === 'daily_report') {
-          publishReport('good');
+          publishReport();
           return { handled: true };
         }
         if (action === 'big_expense') {

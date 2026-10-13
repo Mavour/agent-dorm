@@ -13,7 +13,8 @@ import { createStore } from './store.js';
 import { buildAdapters } from './adapters/index.js';
 import { registerRoutes } from './routes.js';
 import { registerWs } from './ws.js';
-import { reactionForEvent, idleReaction, priorityOf } from './services/boss-reactions.js';
+import { createBossController } from './services/boss-controller.js';
+import { startReportScheduler } from './services/report-scheduler.js';
 
 const config = loadConfig();
 const log = (...a) => {
@@ -44,49 +45,12 @@ if (config.basicUser && config.basicPass) {
 
 await app.register(fastifyWs);
 
-// --- State bos (server-side) ---
-let bossState = { state: 'idle', bubble: '', durationMs: 6000 };
-/** @type {Set<Function>} */
-const bossSubs = new Set();
-let bossTimer = null;
-const boss = {
-  get: () => ({ ...bossState }),
-  /** @param {Function} fn */
-  onBoss: (fn) => bossSubs.add(fn),
-  /** @param {any} event */
-  onEvent: (event) => {
-    const r = reactionForEvent(event);
-    if (!r) return null;
-    if (priorityOf(r.state) >= priorityOf(bossState.state) || bossState.state === 'idle') {
-      setBoss(r.state, r.bubble, r.durationMs);
-      return { state: r.state, bubble: r.bubble, durationMs: r.durationMs };
-    }
-    return null;
-  },
-};
-/** @param {string} state @param {string} bubble @param {number} durationMs */
-function setBoss(state, bubble, durationMs) {
-  bossState = { state, bubble, durationMs };
-  for (const fn of bossSubs) {
-    try {
-      fn({ ...bossState });
-    } catch {
-      /* abaikan */
-    }
-  }
-  if (bossTimer) clearTimeout(bossTimer);
-  if (state !== 'idle') {
-    bossTimer = setTimeout(() => setBoss('idle', '', 6000), durationMs);
-  }
-}
+// --- Bos: dikendalikan boss-controller (prioritas + antrean, satu broadcast) ---
+const boss = createBossController();
 // Idle tick tiap 30-60 dtk
 (function idleLoop() {
   setTimeout(() => {
-    if (bossState.state === 'idle') {
-      const r = idleReaction();
-      setBoss(r.state, r.bubble, r.durationMs);
-      // broadcast via subs sudah terjadi di setBoss; ws mendaftar onBoss
-    }
+    boss.idleTick();
     idleLoop();
   }, 30000 + Math.random() * 30000);
 })();
@@ -112,6 +76,12 @@ for (const ad of adapters) {
 
 registerRoutes(app, { config, store, boss });
 registerWs(app, { store, boss });
+
+// Mode http/file tidak mengirim report_ready: terbitkan dari advisor
+// (nada selalu dari fungsi yang sama). Mode dummy punya jadwal sendiri.
+if (config.agents.portfolio.mode !== 'dummy') {
+  startReportScheduler(store, { advisorMode: config.advisorMode, anthropicKey: config.anthropicKey });
+}
 
 // Global error handler: JSON {error} tanpa stack
 app.setErrorHandler((err, req, reply) => {

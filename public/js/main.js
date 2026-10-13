@@ -109,6 +109,7 @@ function setupDemo() {
     ['close_loss', 'Close rugi'],
     ['bot_offline', 'Bot offline 15 dtk'],
     ['daily_report', 'Rapor harian'],
+    ['big_expense', 'Pengeluaran besar'],
   ];
 
   function toggle() {

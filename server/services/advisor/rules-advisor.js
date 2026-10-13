@@ -1,6 +1,7 @@
 /**
  * Penasihat berbasis aturan (tanpa LLM). Nada santai Bahasa Indonesia.
  */
+import { spendingTone } from './spend-metrics.js';
 
 /**
  * @param {any} snapshot snapshot portfolio
@@ -112,17 +113,16 @@ export function answer(questionId, snapshot) {
 }
 
 /**
- * Rapor harian (dipakai panel Karo).
+ * Rapor harian (dipakai panel Karo). Nada dari spendingTone (sumber tunggal).
  * @param {any} snapshot
  */
 export function dailyReport(snapshot) {
-  const s = stats(snapshot);
-  const ratio = s.avg7 > 0 ? s.today / s.avg7 : 1;
-  if (ratio > 1.3 || s.projected > snapshot.metrics.budget.monthlyUsd) {
-    return { title: 'Rapor harian: boros', text: `Hari ini ${usd(s.today)} (rata-rata ${usd(s.avg7)}). Proyeksi ${usd(s.projected)}. Rem pengeluarannya!`, tone: 'warn' };
+  const t = spendingTone(snapshot);
+  if (t.tone === 'warn') {
+    return { title: 'Rapor harian: boros', text: `Hari ini ${usd(t.today)} (rata-rata ${usd(t.avg7)}). Proyeksi ${usd(t.projected)}. Rem pengeluarannya!`, tone: 'warn' };
   }
-  if (ratio < 0.7) {
-    return { title: 'Rapor harian: hemat', text: `Hemat banget hari ini: ${usd(s.today)} vs rata-rata ${usd(s.avg7)}. Pertahankan!`, tone: 'good' };
+  if (t.tone === 'good') {
+    return { title: 'Rapor harian: hemat', text: `Hemat banget hari ini: ${usd(t.today)} vs rata-rata ${usd(t.avg7)}. Pertahankan!`, tone: 'good' };
   }
-  return { title: 'Rapor harian: stabil', text: `Pengeluaran stabil di ${usd(s.today)}. Semua terkendali.`, tone: 'neutral' };
+  return { title: 'Rapor harian: stabil', text: `Pengeluaran stabil di ${usd(t.today)}. Semua terkendali.`, tone: 'neutral' };
 }

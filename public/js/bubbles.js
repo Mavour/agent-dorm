@@ -4,7 +4,7 @@
  */
 export function createBubbles(stage) {
   const ui = stage.uiEl;
-  /** @type {Map<string, { el: HTMLElement, queue: string[], timer: number|null, anchor: () => {x:number,y:number} }>} */
+  /** @type {Map<string, { el: HTMLElement, queue: { text: string, at: number }[], timer: number|null, anchor: () => {x:number,y:number}, topOffset: number }>} */
   const slots = new Map();
 
   /**
@@ -21,6 +21,7 @@ export function createBubbles(stage) {
   }
 
   /**
+   * Ucapkan teks (agen): antre maks 2, buang yang lebih tua dari 8 dtk.
    * @param {string} charId
    * @param {string} text
    */
@@ -28,20 +29,48 @@ export function createBubbles(stage) {
     const s = slots.get(charId);
     if (!s) return;
     const t = String(text).slice(0, 60);
-    s.queue.push(t);
+    const tnow = Date.now();
+    s.queue = s.queue.filter((q) => tnow - q.at <= 8000);
+    s.queue.push({ text: t, at: tnow });
+    while (s.queue.length > 2) s.queue.shift();
     if (s.el.style.display === 'none') next(charId);
+  }
+
+  /**
+   * Ucapkan teks (bos): "latest wins" — ganti bubble saat ini,
+   * kosongkan antrean agar teks selalu sinkron dengan sprite.
+   * @param {string} charId
+   * @param {string} text
+   */
+  function sayLatest(charId, text) {
+    const s = slots.get(charId);
+    if (!s) return;
+    const t = String(text).slice(0, 60);
+    s.queue.length = 0;
+    if (s.el.style.display === 'none') {
+      s.queue.push({ text: t, at: Date.now() });
+      next(charId);
+    } else {
+      s.el.textContent = t;
+      showFor(s, charId);
+    }
   }
 
   /** @param {string} charId */
   function next(charId) {
     const s = slots.get(charId);
     if (!s) return;
-    const t = s.queue.shift();
-    if (!t) {
+    const q = s.queue.shift();
+    if (!q) {
       s.el.style.display = 'none';
       return;
     }
-    s.el.textContent = t;
+    s.el.textContent = q.text;
+    showFor(s, charId);
+  }
+
+  /** Tampilkan bubble 5 dtk lalu fade dan lanjutkan antrean. */
+  function showFor(s, charId) {
     s.el.style.display = 'block';
     s.el.style.opacity = '1';
     if (s.timer) clearTimeout(s.timer);
@@ -67,7 +96,7 @@ export function createBubbles(stage) {
     }
   }
 
-  return { register, say, frame };
+  return { register, say, sayLatest, frame };
 }
 
 /**
