@@ -156,6 +156,8 @@ function setupDebug(agents) {
   if (!DEBUG) return;
   const el = document.getElementById('debug');
   el.hidden = false;
+  // Tampilkan kotak area klik tiap karakter.
+  document.body.classList.add('show-hit');
   window.__FPS__ = 0;
   window.__paintDebug = () => paintDebug(agents);
 }

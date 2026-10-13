@@ -46,8 +46,19 @@ export function createAgent(opts) {
   badge.className = 'badge';
   badge.style.display = 'none';
 
+  // Target klik transparan: 60% lebar (tengah), 92% tinggi (rata bawah).
+  // Bukan anak img sehingga tidak ikut tercermin saat sprite menghadap kiri.
+  const hit = document.createElement('div');
+  hit.className = 'hit';
+  hit.style.width = Math.round(w * 0.6) + 'px';
+  hit.style.height = Math.round(h * 0.92) + 'px';
+  hit.style.left = Math.round(-w * 0.3) + 'px';
+  hit.style.bottom = '0px';
+  hit.setAttribute('aria-hidden', 'true');
+
   el.appendChild(shadow);
   el.appendChild(img);
+  el.appendChild(hit);
   el.appendChild(iconSlot);
   el.appendChild(badge);
   chars.appendChild(el);

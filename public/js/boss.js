@@ -30,6 +30,15 @@ export function createBoss(stage, store, bubbles, manifest) {
 
   el.appendChild(shadow);
   el.appendChild(img);
+  // Target klik transparan (sama seperti agen).
+  const hit = document.createElement('div');
+  hit.className = 'hit';
+  hit.style.width = Math.round(w * 0.6) + 'px';
+  hit.style.height = Math.round(h * 0.92) + 'px';
+  hit.style.left = Math.round(-w * 0.3) + 'px';
+  hit.style.bottom = '0px';
+  hit.setAttribute('aria-hidden', 'true');
+  el.appendChild(hit);
   chars.appendChild(el);
 
   const label = document.createElement('div');
