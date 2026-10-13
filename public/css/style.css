@@ -70,7 +70,7 @@ body {
   top: 0; left: 0;
   transform-origin: top left;
 }
-#stage img { image-rendering: pixelated; }
+#stage img { image-rendering: var(--img-render, auto); }
 #bg { position: absolute; top: 0; left: 0; user-select: none; }
 #chars { position: absolute; inset: 0; }
 /* Karakter: wrapper diposisikan via translate3d; z-index = kaki y */
@@ -82,7 +82,7 @@ body {
 .char .sprite {
   position: absolute;
   bottom: 0;
-  image-rendering: pixelated;
+  image-rendering: var(--img-render, auto);
   user-select: none;
   pointer-events: none;
 }
@@ -117,7 +117,7 @@ body.show-hit .char .hit {
   pointer-events: none;
   animation: floaty 2.2s ease-in-out infinite;
 }
-.char .icon-slot img { image-rendering: pixelated; display: block; }
+.char .icon-slot img { image-rendering: var(--img-render, auto); display: block; }
 @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .badge {
   position: absolute;

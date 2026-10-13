@@ -10,6 +10,9 @@ export function createStage(manifest) {
   const W = manifest.stage.width;
   const H = manifest.stage.height;
 
+  // Mode render gambar dari manifest (aset HD -> "auto", bukan pixelated).
+  document.documentElement.style.setProperty('--img-render', (manifest.render && manifest.render.imageRendering) || 'auto');
+
   stage.style.width = W + 'px';
   stage.style.height = H + 'px';
   bg.setAttribute('src', '/assets/' + manifest.background);
