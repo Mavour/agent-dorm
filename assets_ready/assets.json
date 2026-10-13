@@ -1,0 +1,205 @@
+{
+  "stage": {
+    "width": 1376,
+    "height": 768
+  },
+  "render": {
+    "imageRendering": "pixelated",
+    "upscale": 3,
+    "nativeHeight": 76
+  },
+  "background": "background.jpg",
+  "layout": {
+    "walkArea": {
+      "xMin": 0.06,
+      "xMax": 0.94,
+      "yMin": 0.76,
+      "yMax": 0.97
+    },
+    "bossSeat": {
+      "x": 0.5,
+      "y": 0.8
+    },
+    "note": "Posisi = pecahan lebar/tinggi stage. y adalah posisi KAKI (anchor bawah sprite)."
+  },
+  "agents": {
+    "exitbot": {
+      "name": "ExitBot",
+      "description": "Eksekutor close otomatis posisi LP di Solana",
+      "sprite": "sprites/exit-bot.png",
+      "size": [
+        168,
+        222
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "iconAnchor": [
+        0.5,
+        0.0
+      ]
+    },
+    "portfolio": {
+      "name": "Karō",
+      "description": "Pengelola portofolio, reporter pemasukan dan pengeluaran",
+      "sprite": "sprites/pengelola-porto.png",
+      "size": [
+        150,
+        207
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "iconAnchor": [
+        0.5,
+        0.0
+      ]
+    },
+    "alert": {
+      "name": "Bot Alert",
+      "description": "Pencari koin bagus untuk di-LP di Solana",
+      "sprite": "sprites/bot-alert.png",
+      "size": [
+        222,
+        213
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "iconAnchor": [
+        0.5,
+        0.0
+      ]
+    },
+    "lpwatcher": {
+      "name": "LP Watcher",
+      "description": "Pemantau wallet LP di Robinhood",
+      "sprite": "sprites/lp-watcher.png",
+      "size": [
+        171,
+        228
+      ],
+      "anchor": [
+        0.5,
+        1.0
+      ],
+      "iconAnchor": [
+        0.5,
+        0.0
+      ]
+    }
+  },
+  "boss": {
+    "name": "Bos",
+    "states": {
+      "idle": {
+        "file": "sprites/boss/bos.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "approve": {
+        "file": "sprites/boss/bos-setuju.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "think": {
+        "file": "sprites/boss/bos-mikir.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "angry": {
+        "file": "sprites/boss/bos-kesal.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "sip": {
+        "file": "sprites/boss/bos-seruput-teh.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "shock": {
+        "file": "sprites/boss/bos-kaget.png",
+        "size": [
+          237,
+          249
+        ]
+      },
+      "laugh": {
+        "file": "sprites/boss/bos-ketawa.png",
+        "size": [
+          237,
+          249
+        ]
+      }
+    },
+    "anchor": [
+      0.5,
+      1.0
+    ],
+    "iconAnchor": [
+      0.5,
+      0.0
+    ],
+    "size": [
+      237,
+      249
+    ]
+  },
+  "icons": {
+    "alert": {
+      "file": "icons/alert.png",
+      "size": [
+        27,
+        75
+      ]
+    },
+    "sweat": {
+      "file": "icons/sweat.png",
+      "size": [
+        48,
+        75
+      ]
+    },
+    "sleep": {
+      "file": "icons/sleep.png",
+      "size": [
+        81,
+        69
+      ]
+    },
+    "think": {
+      "file": "icons/think.png",
+      "size": [
+        57,
+        75
+      ]
+    },
+    "sparkle": {
+      "file": "icons/sparkle.png",
+      "size": [
+        78,
+        78
+      ]
+    },
+    "anger": {
+      "file": "icons/anger.png",
+      "size": [
+        72,
+        72
+      ]
+    }
+  }
+}
