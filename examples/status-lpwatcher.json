@@ -1,0 +1,90 @@
+{
+  "agentId": "lpwatcher",
+  "status": "ok",
+  "updatedAt": "2026-10-13T08:30:13.550Z",
+  "headline": "Semua posisi LP terpantau",
+  "metrics": {
+    "wallet": "Robinhood Wallet",
+    "totals": {
+      "valueUsd": 10260,
+      "feesEarnedUsd": 126.3,
+      "unrealizedPnlUsd": 109.6,
+      "positionsInRange": 5,
+      "positionsOutOfRange": 0
+    },
+    "positions": [
+      {
+        "id": "lp-sol",
+        "pair": "SOL/USDC",
+        "protocol": "Orca",
+        "rangeLow": 138,
+        "rangeHigh": 162,
+        "price": 151.2,
+        "inRange": true,
+        "valueUsd": 4820,
+        "feesEarnedUsd": 61.2,
+        "unrealizedPnlUsd": 84.5,
+        "ilPct": -0.4,
+        "openedAt": "2026-09-01T00:00:00.000Z"
+      },
+      {
+        "id": "lp-jup",
+        "pair": "JUP/USDC",
+        "protocol": "Raydium",
+        "rangeLow": 0.78,
+        "rangeHigh": 0.96,
+        "price": 0.87,
+        "inRange": true,
+        "valueUsd": 2150,
+        "feesEarnedUsd": 28.4,
+        "unrealizedPnlUsd": 32.1,
+        "ilPct": -0.2,
+        "openedAt": "2026-09-01T00:00:00.000Z"
+      },
+      {
+        "id": "lp-wif",
+        "pair": "WIF/SOL",
+        "protocol": "Meteora",
+        "rangeLow": 0.0042,
+        "rangeHigh": 0.0051,
+        "price": 0.0047,
+        "inRange": true,
+        "valueUsd": 1380,
+        "feesEarnedUsd": 15.9,
+        "unrealizedPnlUsd": -12.6,
+        "ilPct": -1.1,
+        "openedAt": "2026-09-01T00:00:00.000Z"
+      },
+      {
+        "id": "lp-bonk",
+        "pair": "BONK/USDC",
+        "protocol": "Orca",
+        "rangeLow": 0.000021,
+        "rangeHigh": 0.000027,
+        "price": 0.000024,
+        "inRange": true,
+        "valueUsd": 1020,
+        "feesEarnedUsd": 11.2,
+        "unrealizedPnlUsd": 9.8,
+        "ilPct": -0.1,
+        "openedAt": "2026-09-01T00:00:00.000Z"
+      },
+      {
+        "id": "lp-jto",
+        "pair": "JTO/USDC",
+        "protocol": "Raydium",
+        "rangeLow": 2.1,
+        "rangeHigh": 2.7,
+        "price": 2.38,
+        "inRange": true,
+        "valueUsd": 890,
+        "feesEarnedUsd": 9.6,
+        "unrealizedPnlUsd": -4.2,
+        "ilPct": -0.6,
+        "openedAt": "2026-09-01T00:00:00.000Z"
+      }
+    ]
+  },
+  "alerts": [],
+  "events": []
+}
