@@ -8,7 +8,7 @@ import { createIconLayer } from './icon-layer.js';
 import { homeFor, pickWanderTarget } from './wander.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
-import { resolveActivities, resolveFeet } from './activity-logic.js';
+import { resolveActivities, resolveFeet, idlePauseMs, walkTargetAllowed } from './activity-logic.js';
 import { advancePhase, walkPose, STRIDE, AMP_RAMP } from './walk-logic.js';
 import { createWalkRig } from './walk-rig.js';
 
@@ -122,7 +122,7 @@ export function createAgent(opts) {
     y: home.y,
     state: 'idle',
     target: null,
-    idleUntil: performance.now() + 2000 + Math.random() * 3000,
+    idleUntil: performance.now() + idlePauseMs(),
     busyUntil: 0,
     shakeAt: 0,
     unacked: 0, // jumlah warn/critical belum diakui
@@ -130,6 +130,8 @@ export function createAgent(opts) {
     dir: 1,
     phase: 0, // fase langkah (radian, maju sejauh jarak tempuh)
     amp: 0, // amplitudo jalan 0..1 (merambat 0,15 dtk)
+    prevTarget: null, // target jalan sebelumnya (min 100 px dari yang baru)
+    socialUntil: 0, // cooldown jeda sosial
   };
 
   const layer = createIconLayer({
@@ -165,7 +167,13 @@ export function createAgent(opts) {
   const act = createActivityDriver({ id, acts, player, reduced: REDUCED, statusOf });
 
   function pickTarget() {
-    return pickWanderTarget(area, seat, peers, home);
+    // Target baru min 100 px dari target sebelumnya (variasi rute).
+    let t = pickWanderTarget(area, seat, peers, home);
+    for (let i = 0; i < 6 && !walkTargetAllowed(S.prevTarget, t); i++) {
+      t = pickWanderTarget(area, seat, peers, home);
+    }
+    S.prevTarget = t;
+    return t;
   }
 
   function statusOf() {
@@ -204,7 +212,7 @@ export function createAgent(opts) {
     badge.style.display = 'none';
     if (S.state === 'alert') {
       S.state = 'idle';
-      S.idleUntil = performance.now() + 2000;
+      S.idleUntil = performance.now() + idlePauseMs();
       hideIcon();
     }
   }
@@ -253,7 +261,7 @@ export function createAgent(opts) {
     act.stop();
     if (S.state === 'activity') {
       S.state = 'idle';
-      S.idleUntil = performance.now() + 1500;
+      S.idleUntil = performance.now() + idlePauseMs();
     }
   }
 
@@ -271,7 +279,18 @@ export function createAgent(opts) {
   function duelTo(x, y) {
     act.st.duelHold = true;
     S.target = { x, y };
+    S.prevTarget = S.target;
     S.state = 'walking';
+    act.noteWalk();
+  }
+
+  /** Jeda sosial: hadap arah dir, diam hingga untilMs. @returns {boolean} */
+  function socialHold(dir, untilMs) {
+    if (S.state !== 'idle') return false;
+    S.dir = dir;
+    S.idleUntil = Math.max(S.idleUntil, untilMs);
+    S.socialUntil = untilMs + 15000;
+    return true;
   }
 
   /** @param {string} icon @param {number} ms @param {number} now */
@@ -298,7 +317,7 @@ export function createAgent(opts) {
     } else if (S.state === 'alert' && S.unacked === 0) {
       // Alert sudah diakui/di-resolve -> kembali idle
       S.state = 'idle';
-      S.idleUntil = now + 2000;
+      S.idleUntil = now + idlePauseMs();
       hideIcon();
     } else if (S.unacked > 0 && S.state !== 'busy') {
       S.state = 'alert';
@@ -314,7 +333,7 @@ export function createAgent(opts) {
     } else if (S.state === 'busy') {
       if (now >= S.busyUntil) {
         S.state = 'idle';
-        S.idleUntil = now + 2000 + Math.random() * 4000;
+        S.idleUntil = now + idlePauseMs();
       }
     } else if (REDUCED) {
       S.state = 'idle';
@@ -322,12 +341,20 @@ export function createAgent(opts) {
       S.y = home.y;
     } else if (S.state === 'idle') {
       if (now >= S.idleUntil) {
-        const pick = act.idlePick(now, S.unacked);
+        // Batas 2 aktivitas idle serentak (event dikecualikan).
+        let activeIdle = 0;
+        for (const o of window.__AGENTS__ || []) {
+          if (o === api || !o.activityInfo) continue;
+          const inf = o.activityInfo();
+          if (inf && inf.kind === 'idle') activeIdle += 1;
+        }
+        const pick = act.idlePick(now, S.unacked, activeIdle);
         if (pick && playActivity(pick.name, pick.durationMs, 'idle')) {
           // state -> activity
         } else {
           S.target = pickTarget();
           S.state = 'walking';
+          act.noteWalk();
         }
       }
     } else if (S.state === 'walking' && S.target) {
@@ -342,7 +369,7 @@ export function createAgent(opts) {
         S.state = 'idle';
         S.target = null;
         // Penahan duel: idle panjang agar manajer sempat memulai duel.
-        S.idleUntil = act.st.duelHold ? now + 30000 : now + 2000 + Math.random() * 4000;
+        S.idleUntil = act.st.duelHold ? now + 30000 : now + idlePauseMs();
       } else {
         S.phase = advancePhase(S.phase, step, STRIDE);
         S.x += (dx / dist) * step;
@@ -423,6 +450,7 @@ export function createAgent(opts) {
     activityInfo,
     cueSeq,
     duelTo,
+    socialHold,
     anchor,
     topOffset: h,
     debug() {
@@ -440,6 +468,7 @@ export function createAgent(opts) {
         frame: cur ? cur.index : -1,
         phase: Math.round(S.phase * 100) / 100,
         amp: Math.round(S.amp * 100) / 100,
+        socialUntil: S.socialUntil,
       };
     },
   };

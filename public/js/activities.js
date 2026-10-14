@@ -2,7 +2,7 @@
  * Aktivitas client-side: trigger demo per aktivitas + duel "adu pedang"
  * ExitBot vs LP Watcher. Tak ada panggilan server di sini.
  */
-import { duelEligible, duelTargets, resolveActivities } from './activity-logic.js';
+import { duelEligible, duelTargets, resolveActivities, pickSocialPair, SOCIAL_MS } from './activity-logic.js';
 
 export const DUEL_GAP = 140;
 const DUEL_ARRIVE_PX = 8;
@@ -106,6 +106,7 @@ export function createActivities(opts) {
    * @param {number} now
    */
   function tick(now) {
+    tickSocial(now);
     if (!duel) {
       if (now >= nextAt) {
         if (!tryStart()) nextAt = now + RETRY_MS;
@@ -160,6 +161,30 @@ export function createActivities(opts) {
   function info() {
     if (!duel) return null;
     return { phase: duel.phase };
+  }
+
+  /**
+   * Jeda sosial: dua agen idle berdekatan kadang saling menghadap 3 dtk.
+   * @param {number} now
+   */
+  function tickSocial(now) {
+    if (reduced) return;
+    const snaps = [];
+    for (const a of agents) {
+      if (typeof a.socialHold !== 'function') continue;
+      const d = a.debug();
+      if (d.state !== 'idle') continue;
+      snaps.push({ id: a.id, x: d.x, y: d.y, state: d.state, socialUntil: d.socialUntil || 0 });
+    }
+    if (snaps.length < 2) return;
+    const pair = pickSocialPair(snaps, now, Math.random);
+    if (!pair) return;
+    const a = byId.get(pair.a);
+    const b = byId.get(pair.b);
+    if (!a || !b) return;
+    if (inDuel(pair.a) || inDuel(pair.b)) return;
+    a.socialHold(pair.dirA, now + SOCIAL_MS);
+    b.socialHold(pair.dirB, now + SOCIAL_MS);
   }
 
   return { trigger, tick, tryStart, info };

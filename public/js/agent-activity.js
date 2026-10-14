@@ -3,7 +3,7 @@
  * Pemilik (agent.js) memegang S + player; driver memegang status
  * aktivitas, cooldown, urutan cue, dan penahan duel.
  */
-import { pickIdleActivity } from './activity-logic.js';
+import { pickIdleActivityVaried, mustWalkFirst, canStartIdleActivity, idlePauseMs, createBehaviorMemory, recordBehavior } from './activity-logic.js';
 
 // Aktivitas event per tipe cue (didorong CUE terserial, bukan event mentah).
 export const EVENT_ACT = {
@@ -37,6 +37,7 @@ export function createActivityDriver(opts) {
     cueSeq: 0,
     cueUntil: 0,
     duelHold: false,
+    hist: createBehaviorMemory(), // 3 perilaku terakhir ('walk'/nama aktivitas)
   };
 
   /**
@@ -53,6 +54,7 @@ export function createActivityDriver(opts) {
     st.endsAt = performance.now() + durationMs;
     st.unackedAtStart = unacked;
     st.duelHold = false;
+    recordBehavior(st.hist, name);
     return true;
   }
 
@@ -60,6 +62,12 @@ export function createActivityDriver(opts) {
     if (player) player.stop();
     st.cur = null;
     st.duelHold = false;
+  }
+
+  /** Catat mulai berjalan (dipanggil pemilik tiap transisi ke walking). */
+  function noteWalk() {
+    const h = st.hist.hist;
+    if (h[h.length - 1] !== 'walk') recordBehavior(st.hist, 'walk');
   }
 
   /** Selesai normal: hentikan + cooldown 15 dtk. @param {number} now */
@@ -70,16 +78,21 @@ export function createActivityDriver(opts) {
 
   /**
    * Keputusan aktivitas idle (dipanggil saat idle timer habis).
+   * Variasi: wajib jalan setelah aktivitas, maks 2 idle serentak,
+   * tanpa pengulangan langsung, bobot x0,3 untuk 2 pick terakhir.
    * @param {number} now
    * @param {number} unacked
+   * @param {number} [activeIdle=0] agen lain yang sedang aktivitas idle
    * @returns {{ name: string, durationMs: number } | null}
    */
-  function idlePick(now, unacked) {
+  function idlePick(now, unacked, activeIdle = 0) {
     if (reduced || !player) return null;
     if (unacked > 0) return null;
     if (st.duelHold) return null;
+    if (mustWalkFirst(st.hist)) return null;
+    if (!canStartIdleActivity(activeIdle)) return null;
     if (Math.random() >= IDLE_PROBABILITY) return null;
-    const pick = pickIdleActivity(id, acts, Math.random, now, st.coolUntil);
+    const pick = pickIdleActivityVaried(id, acts, Math.random, now, st.coolUntil, st.hist.hist);
     if (!pick || !player.available(pick.name)) return null;
     return pick;
   }
@@ -101,11 +114,11 @@ export function createActivityDriver(opts) {
     if (now >= st.endsAt) {
       finish(now);
       S.state = 'idle';
-      S.idleUntil = now + 2000 + Math.random() * 4000;
+      S.idleUntil = now + idlePauseMs();
       return true;
     }
     return true;
   }
 
-  return { st, play, stop, finish, idlePick, tickActivity };
+  return { st, play, stop, finish, idlePick, tickActivity, noteWalk };
 }

@@ -200,3 +200,150 @@ export function duelTargets(area, seat, gap, rng, W, H) {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Variasi perilaku: riwayat pendek per agen, jeda diam acak, target jalan
+// berjarak, batas aktivitas idle serentak, dan jeda sosial. Semua murni.
+// ---------------------------------------------------------------------------
+
+// Jeda diam antar perilaku: 1,5 - 6 dtk.
+/** @type {[number, number]} */
+export const IDLE_PAUSE_MS = [1500, 6000];
+/** @param {() => number} [rng=Math.random] */
+export function idlePauseMs(rng = Math.random) {
+  const [lo, hi] = IDLE_PAUSE_MS;
+  return Math.round(lo + rng() * (hi - lo));
+}
+
+// Maks aktivitas IDLE serentak (event dikecualikan oleh pemanggil).
+export const MAX_IDLE_ACTIVITIES = 2;
+/**
+ * @param {number} activeIdleCount agen lain yang sedang aktivitas idle
+ * @param {number} [limit=MAX_IDLE_ACTIVITIES]
+ */
+export function canStartIdleActivity(activeIdleCount, limit = MAX_IDLE_ACTIVITIES) {
+  return activeIdleCount < limit;
+}
+
+// Target jalan tak boleh dalam 100 px dari target sebelumnya.
+export const WALK_RETARGET_PX = 100;
+/**
+ * @param {{ x: number, y: number }|null} prev target sebelumnya
+ * @param {{ x: number, y: number }|null} next kandidat target
+ */
+export function walkTargetAllowed(prev, next) {
+  if (!prev || !next) return true;
+  return Math.hypot(next.x - prev.x, next.y - prev.y) >= WALK_RETARGET_PX;
+}
+
+// Jeda sosial: dua agen idle berdekatan kadang saling menghadap sejenak.
+export const SOCIAL_DIST = 220;
+export const SOCIAL_CHANCE = 0.25;
+export const SOCIAL_MS = 3000;
+/** Arah hadap agar a memandang b. @param {number} ax @param {number} bx */
+export function faceToward(ax, bx) {
+  return ax < bx ? 1 : -1;
+}
+
+/** Riwayat 3 perilaku terakhir ('walk' atau nama aktivitas). */
+export function createBehaviorMemory() {
+  return { hist: [] };
+}
+/** @param {{ hist: string[] }} mem @param {string} behavior */
+export function recordBehavior(mem, behavior) {
+  mem.hist.push(behavior);
+  if (mem.hist.length > 3) mem.hist.splice(0, mem.hist.length - 3);
+}
+/** Wajib jalan dulu bila perilaku terakhir adalah aktivitas. @param {{ hist: string[] }} mem */
+export function mustWalkFirst(mem) {
+  if (!mem || !mem.hist.length) return false;
+  return mem.hist[mem.hist.length - 1] !== 'walk';
+}
+
+/** Aktivitas terakhir dalam riwayat (lewati 'walk'). @param {string[]} hist */
+function lastActivityOf(hist) {
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i] !== 'walk') return hist[i];
+  }
+  return null;
+}
+
+/**
+ * Durasi satu entri tabel idle (sama untuk versi dasar dan variasi).
+ * @param {{ name: string, dur: [number, number]|null }} entry
+ * @param {Record<string, any>} acts
+ * @param {() => number} rng
+ */
+export function idleEntryDuration(entry, acts, rng) {
+  if (!entry.dur) {
+    const def = acts[entry.name] || {};
+    const n = (def.frames || []).length || 1;
+    const fps = def.fps || 4;
+    return Math.ceil((n / fps) * 1000) + ONCE_HOLD_MS;
+  }
+  const [lo, hi] = entry.dur;
+  return Math.round(lo + rng() * (hi - lo));
+}
+
+/**
+ * Pilih aktivitas idle dengan variasi: tak pernah sama dua pick beruntun
+ * (kecuali agen hanya punya satu aktivitas), aktivitas di 2 pick terakhir
+ * berbobot x0,3.
+ * @param {string} agentId
+ * @param {Record<string, any>|null} acts definisi manifest (atau null)
+ * @param {() => number} rng acak [0,1)
+ * @param {number} now ms
+ * @param {number} cooldownUntil ms (0 = bebas)
+ * @param {string[]} [hist] riwayat perilaku (lihat createBehaviorMemory)
+ * @returns {{ name: string, durationMs: number } | null}
+ */
+export function pickIdleActivityVaried(agentId, acts, rng, now, cooldownUntil, hist) {
+  if (now < cooldownUntil) return null;
+  const table = (IDLE_ACTIVITIES[agentId] || []).filter((e) => acts && acts[e.name]);
+  if (!table.length) return null;
+  const h = hist || [];
+  const recentActs = h.filter((b) => b !== 'walk').slice(-2);
+  const lastAct = lastActivityOf(h);
+  let cand = table.filter((e) => e.name !== lastAct);
+  if (!cand.length) {
+    // Agen satu aktivitas (exitbot/alert): boleh lagi hanya bila sudah
+    // dipisah jalan; bila tidak, kembalikan null agar jalan dulu.
+    if (h[h.length - 1] !== 'walk') return null;
+    cand = table;
+  }
+  const weighted = cand.map((e) => ({ e, w: e.weight * (recentActs.includes(e.name) ? 0.3 : 1) }));
+  const total = weighted.reduce((s, c) => s + c.w, 0);
+  if (!(total > 0)) return null;
+  let r = rng() * total;
+  let pick = weighted[weighted.length - 1].e;
+  for (const c of weighted) {
+    r -= c.w;
+    if (r <= 0) {
+      pick = c.e;
+      break;
+    }
+  }
+  return { name: pick.name, durationMs: idleEntryDuration(pick, acts, rng) };
+}
+
+/**
+ * Cari pasangan idle berdekatan untuk jeda sosial (murni, tanpa efek).
+ * @param {{ id: string, x: number, y: number, state: string, socialUntil: number }[]} snaps
+ * @param {number} now ms
+ * @param {() => number} rng
+ * @returns {{ a: string, b: string, dirA: number, dirB: number } | null}
+ */
+export function pickSocialPair(snaps, now, rng) {
+  for (let i = 0; i < snaps.length; i++) {
+    for (let j = i + 1; j < snaps.length; j++) {
+      const a = snaps[i];
+      const b = snaps[j];
+      if (a.state !== 'idle' || b.state !== 'idle') continue;
+      if (now < (a.socialUntil || 0) || now < (b.socialUntil || 0)) continue;
+      if (Math.hypot(a.x - b.x, a.y - b.y) >= SOCIAL_DIST) continue;
+      if (rng() >= SOCIAL_CHANCE) continue;
+      return { a: a.id, b: b.id, dirA: faceToward(a.x, b.x), dirB: faceToward(b.x, a.x) };
+    }
+  }
+  return null;
+}
