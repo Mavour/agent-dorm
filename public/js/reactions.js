@@ -1,30 +1,42 @@
 /**
- * Mapping event -> ikon + status sibuk untuk karakter agen.
- * Dipisah dari agent.js agar tiap file tetap kecil.
+ * Reaksi visual agen: bubble/ikon/busy mengikuti "cue" terserial dari
+ * report-director (satu dalam satu waktu). Badge merah + ikon alert/sleep
+ * persisten tetap mengikuti event mentah/snapshot (real-time).
  */
 import { bubbleForEvent } from './bubbles.js';
 
 /**
- * Terapkan reaksi visual untuk satu event milik agen ini.
- * @param {{ S: any, id: string, w: number, h: number, badge: HTMLElement, showIcon: (n: string, ms: number) => void, hideIcon: () => void, busy: (icon: string, ms: number, now: number) => void, bubbles: any, REDUCED: boolean }} ctx
+ * Pembukuan badge dari event mentah. Tanpa bubble/ikon di sini.
+ * @param {{ S: any, id: string, showBadge: (n: number) => void, hideBadge: () => void }} ctx
  * @param {any} event
  */
-export function reactToEvent(ctx, event) {
-  const { S, id, bubbles } = ctx;
+export function noteEvent(ctx, event) {
+  const { S, id } = ctx;
   if (event.agentId !== id) return;
+  if (event.type === 'position_out_of_range') {
+    S.unacked += 1;
+    ctx.showBadge(S.unacked);
+  } else if (event.type === 'position_back_in_range' || event.type === 'agent_online') {
+    S.unacked = 0;
+    ctx.hideBadge();
+  }
+}
+
+/**
+ * Presentasi penuh satu cue terserial.
+ * @param {{ S: any, id: string, showIcon: (n: string, ms: number) => void, hideIcon: () => void, busy: (icon: string, ms: number, now: number) => void, bubbles: any, REDUCED: boolean }} ctx
+ * @param {{ cueId: string, agentId: string, event: any, durationMs: number }} cue
+ */
+export function reactToCue(ctx, cue) {
+  const event = cue && cue.event;
+  if (!event || event.agentId !== ctx.id) return;
+  const { S, id, bubbles } = ctx;
   const d = event.data || {};
   bubbles.say(id, bubbleForEvent(event));
   const now = performance.now();
   if (event.type === 'position_out_of_range') {
-    S.unacked += 1;
-    ctx.badge.textContent = String(S.unacked);
-    ctx.badge.style.display = 'block';
-    ctx.badge.style.left = ctx.w / 2 - 8 + 'px';
-    ctx.badge.style.bottom = ctx.h - 10 + 'px';
     if (!ctx.REDUCED) ctx.showIcon('alert', 60000);
   } else if (event.type === 'position_back_in_range') {
-    S.unacked = 0;
-    ctx.badge.style.display = 'none';
     ctx.hideIcon();
     ctx.busy('sparkle', 3000, now);
   } else if (event.type === 'position_closed') {
@@ -56,8 +68,6 @@ export function reactToEvent(ctx, event) {
   } else if (event.type === 'agent_online') {
     ctx.hideIcon();
     if (!ctx.REDUCED) ctx.showIcon('sparkle', 3000);
-    S.unacked = 0;
-    ctx.badge.style.display = 'none';
     S.busyUntil = now + 2000;
     S.state = 'busy';
   }

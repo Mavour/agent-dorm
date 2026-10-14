@@ -3,8 +3,8 @@
  * mesin status client (idle/walking/busy/alert/offline) via requestAnimationFrame.
  * Berhenti saat tab hidden. Hormati prefers-reduced-motion.
  */
-import { reactToEvent, noteEvent } from './reactions.js';
-import { measureHead, placeIcon } from './icon-anchor.js';
+import { noteEvent, reactToCue } from './reactions.js';
+import { createIconLayer } from './icon-layer.js';
 
 const SPEED = 35; // px stage per detik
 const STATUS_COLOR = { ok: '#4ade80', warn: '#fbbf24', error: '#f87171', offline: '#9ca3af' };
@@ -100,112 +100,32 @@ export function createAgent(opts) {
     target: null,
     idleUntil: performance.now() + 2000 + Math.random() * 3000,
     busyUntil: 0,
-    iconUntil: 0,
     shakeAt: 0,
     unacked: 0, // jumlah warn/critical belum diakui
     acked: new Set(), // id alert yang sudah diakui via popup
     dir: 1,
-    icon: null, // nama ikon yang sedang tampil
-    iconSide: ICON_SIDE[id] || 'right', // sisi efektif terakhir
-    head: null, // {left, right} hasil ukur siluet kepala
   };
 
-  // Ukur siluet kepala sekali saat sprite termuat (fallback bila gagal).
-  const measureSrc = '/assets/' + cfg.sprite;
-  if (img.complete && img.naturalWidth) {
-    measureHead(measureSrc, w, h).then((m) => {
-      S.head = m;
-    });
-  } else {
-    img.addEventListener('load', () => {
-      measureHead(measureSrc, w, h).then((m) => {
-        S.head = m;
-      });
-    });
-  }
+  const layer = createIconLayer({
+    icons,
+    w,
+    h,
+    stage,
+    iconSlot,
+    badge,
+    cross,
+    getDir: () => S.dir,
+    getX: () => S.x,
+    defaultSide: ICON_SIDE[id] || 'right',
+    scaleFor: (name) => ICON_SCALE_OVERRIDE[name] ?? ICON_SCALE,
+    measureSrc: '/assets/' + cfg.sprite,
+  });
 
-  /** Skala ikon (override per ikon bila ada). @param {string} name */
-  function iconScale(name) {
-    return ICON_SCALE_OVERRIDE[name] ?? ICON_SCALE;
-  }
-
-  /** @param {string} name */
-  function showIcon(name, ms) {
-    const meta = icons[name];
-    if (!meta) return;
-    S.icon = name;
-    const sc = iconScale(name);
-    const iw = Math.max(8, Math.round(meta.size[0] * sc));
-    const ih = Math.max(8, Math.round(meta.size[1] * sc));
-    iconSlot.replaceChildren();
-    const im = document.createElement('img');
-    im.setAttribute('src', '/assets/' + meta.file);
-    im.style.width = iw + 'px';
-    im.style.height = ih + 'px';
-    iconSlot.appendChild(im);
-    iconSlot.style.display = 'block';
-    positionIcon();
-    S.iconUntil = performance.now() + ms;
-  }
-  function hideIcon() {
-    S.icon = null;
-    iconSlot.style.display = 'none';
-    iconSlot.replaceChildren();
-    cross.style.display = 'none';
-  }
-
-  /**
-   * Posisikan ikon di samping kepala (tengah vertikal 20% dari atas sprite).
-   * Sisi mengikuti konfigurasi + arah hadap agar tetap di luar siluet,
-   * lalu auto-flip bila keluar batas stage. Dipanggil tiap frame selama
-   * ikon tampil agar selalu sinkron dengan gerakan.
-   */
-  function positionIcon() {
-    if (!S.icon) return;
-    const meta = icons[S.icon];
-    if (!meta) return;
-    const sc = iconScale(S.icon);
-    const iw = Math.max(8, Math.round(meta.size[0] * sc));
-    const ih = Math.max(8, Math.round(meta.size[1] * sc));
-    const head = S.head || { left: Math.round(w * 0.3), right: Math.round(w * 0.7) };
-    // Cerminkan pengukuran saat sprite menghadap kiri (flip di img saja).
-    const eff = S.dir < 0 ? { left: w - head.right, right: w - head.left } : head;
-    const want = ICON_SIDE[id] || 'right';
-    const r = placeIcon({ spriteW: w, spriteH: h, headLeft: eff.left, headRight: eff.right, iconW: iw, iconH: ih, side: want, feetX: S.x, stageW: stage.W });
-    S.iconSide = r.side;
-    iconSlot.style.left = Math.round(r.left) + 'px';
-    iconSlot.style.bottom = Math.round(r.bottom) + 'px';
-    // Crosshair debug di titik jangkar (tepi kepala setinggi tengah ikon).
-    if (document.body.classList.contains('show-hit')) {
-      const ax = -w / 2 + (r.side === 'right' ? eff.right : eff.left);
-      cross.style.display = 'block';
-      cross.style.left = Math.round(ax - 5) + 'px';
-      cross.style.bottom = Math.round(h * 0.8 - 5) + 'px';
-    } else {
-      cross.style.display = 'none';
-    }
-    positionBadge();
-  }
-
-  /** Badge merah di sudut atas berlawanan dengan sisi ikon. */
-  function positionBadge() {
-    if (S.iconSide === 'right') {
-      badge.style.left = Math.round(-w / 2 - 10) + 'px';
-    } else {
-      badge.style.left = Math.round(w / 2 - 8) + 'px';
-    }
-    badge.style.bottom = h - 10 + 'px';
-  }
-
-  /** @param {number} n */
-  function showBadge(n) {
-    badge.textContent = String(n);
-    badge.style.display = 'block';
-    positionBadge();
-  }
-  function hideBadge() {
-    badge.style.display = 'none';
-  }
+  // showIcon/hideIcon/showBadge/hideBadge diteruskan ke layer (lihat icon-layer.js).
+  const showIcon = (n, ms) => layer.show(n, ms);
+  const hideIcon = () => layer.hide();
+  const showBadge = (n) => layer.showBadge(n);
+  const hideBadge = () => layer.hideBadge();
 
   function pickTarget() {
     for (let i = 0; i < 12; i++) {
@@ -245,7 +165,7 @@ export function createAgent(opts) {
     const fresh = [...openIds].filter((aid) => !S.acked.has(aid)).length;
     S.unacked = fresh;
     if (fresh > 0) {
-      if (!REDUCED && iconSlot.style.display === 'none') showIcon('alert', 60000);
+      if (!REDUCED && !layer.visible()) showIcon('alert', 60000);
       showBadge(fresh);
     } else {
       hideBadge();
@@ -270,11 +190,19 @@ export function createAgent(opts) {
   }
 
   /**
-   * Event global -> ikon + busy/alert sesuai mapping (lihat reactions.js).
+   * Event mentah -> hanya pembukuan badge (real-time).
    * @param {any} event
    */
   function onEvent(event) {
-    reactToEvent({ S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED }, event);
+    noteEvent({ S, id, showBadge, hideBadge }, event);
+  }
+
+  /**
+   * Cue terserial dari director -> bubble + ikon + busy.
+   * @param {any} cue
+   */
+  function onCue(cue) {
+    reactToCue({ S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED }, cue);
   }
 
   /** @param {string} icon @param {number} ms @param {number} now */
@@ -293,7 +221,7 @@ export function createAgent(opts) {
 
     if (offline) {
       S.state = 'offline';
-      if (!REDUCED && iconSlot.style.display === 'none') showIcon('sleep', 60000);
+      if (!REDUCED && !layer.visible()) showIcon('sleep', 60000);
     } else if (S.state === 'alert' && S.unacked === 0) {
       // Alert sudah diakui/di-resolve -> kembali idle
       S.state = 'idle';
@@ -308,7 +236,7 @@ export function createAgent(opts) {
           el.classList.add('shake');
           S.shakeAt = now + 4000;
         }
-        if (iconSlot.style.display === 'none') showIcon('alert', 60000);
+        if (!layer.visible()) showIcon('alert', 60000);
       }
     } else if (S.state === 'busy') {
       if (now >= S.busyUntil) {
@@ -342,10 +270,8 @@ export function createAgent(opts) {
       }
     }
 
-    if (S.iconUntil && now >= S.iconUntil && S.state !== 'alert' && !offline) hideIcon();
-    // Ikon + badge mengikuti tiap frame (arah hadap / posisi berubah).
-    if (S.icon && iconSlot.style.display !== 'none') positionIcon();
-    else if (badge.style.display !== 'none') positionBadge();
+    // Lapisan ikon + badge mengikuti tiap frame (kedaluwarsa, arah, posisi).
+    layer.tick(now, S.state === 'alert' || offline);
 
     el.classList.toggle('walking', S.state === 'walking' && !REDUCED);
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
@@ -383,6 +309,7 @@ export function createAgent(opts) {
     frame,
     react,
     onEvent,
+    onCue,
     anchor,
     topOffset: h,
     debug() {

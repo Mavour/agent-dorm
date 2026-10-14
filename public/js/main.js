@@ -56,11 +56,20 @@ async function main() {
   }
   const boss = createBoss(stage, store, bubbles, manifest);
 
-  // Event -> agen (ikon/bubble) + reaksi awal
+  // Event mentah -> badge real-time; cue terserial -> bubble/ikon/busy.
   for (const a of agents) a.react();
   store.subscribe((kind, payload) => {
     if (kind === 'event') {
       for (const a of agents) a.onEvent(payload.event);
+    } else if (kind === 'cue') {
+      for (const a of agents) a.onCue(payload.cue);
+      const ev = payload.cue.event || {};
+      window.__DIRECTOR__ = {
+        cueId: payload.cue.cueId,
+        agentId: payload.cue.agentId,
+        type: ev.type,
+        queueLength: payload.cue.queueLength,
+      };
     } else if (kind === 'snapshot' || kind === 'snapshot_all') {
       for (const a of agents) a.react();
     }
@@ -168,6 +177,9 @@ function paintDebug(agents) {
   const el = document.getElementById('debug');
   if (!el) return;
   const lines = [`FPS ${window.__FPS__ || 0}`];
+  const dir = window.__DIRECTOR__;
+  if (dir) lines.push(`cue ${dir.type || '-'} oleh ${dir.agentId || '-'} (antre ${dir.queueLength ?? 0})`);
+  else lines.push('cue - (antre 0)');
   for (const a of agents) {
     const d = a.debug();
     lines.push(`${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`);

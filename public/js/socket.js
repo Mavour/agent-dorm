@@ -71,8 +71,11 @@ export function connectSocket(store, hud) {
         store.setSnapshot(m.agentId, m.snapshot);
       } else if (m.type === 'event') {
         store.pushEvent(m.event);
+      } else if (m.type === 'cue') {
+        // Cue presentasi: bubble/ikon/bos, sekali jalan (tak diputar ulang).
+        store.pushCue(m);
       } else if (m.type === 'boss') {
-        store.setBoss({ state: m.state, bubble: m.bubble, durationMs: m.durationMs });
+        store.setBoss(m);
       }
       // ping: tidak perlu dibalas (server hanya broadcast)
     };

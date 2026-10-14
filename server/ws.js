@@ -1,9 +1,9 @@
 /**
  * WebSocket /ws: server -> client saja (client hanya boleh kirim pong).
  * @param {any} app fastify
- * @param {{ store: any, boss: any }} deps
+ * @param {{ store: any, boss: any, director?: any }} deps
  */
-export function registerWs(app, { store, boss }) {
+export function registerWs(app, { store, boss, director }) {
   /** @type {Set<any>} */
   const clients = new Set();
 
@@ -12,13 +12,17 @@ export function registerWs(app, { store, boss }) {
     if (msg.type === 'agent_update') {
       broadcast({ type: 'agent_update', agentId: msg.agentId, snapshot: msg.snapshot });
     } else if (msg.type === 'event') {
+      // Mentah langsung disiarkan; presentasi (bubble/ikon/bos) antre di director.
       broadcast({ type: 'event', event: msg.event });
-      // Satu jalur broadcast: onEvent tidak me-return; reaksi disiarkan via onBoss.
-      boss.onEvent(msg.event);
+      if (director) director.pushEvent(msg.event);
     }
   });
 
   boss.onBoss((b) => broadcast({ type: 'boss', ...b }));
+
+  if (director) {
+    director.onCue((cue) => broadcast(cue));
+  }
 
   /** @param {any} obj */
   function broadcast(obj) {

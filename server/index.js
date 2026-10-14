@@ -14,6 +14,7 @@ import { buildAdapters } from './adapters/index.js';
 import { registerRoutes } from './routes.js';
 import { registerWs } from './ws.js';
 import { createBossController } from './services/boss-controller.js';
+import { createReportDirector } from './services/report-director.js';
 import { startReportScheduler } from './services/report-scheduler.js';
 
 const config = loadConfig();
@@ -45,12 +46,13 @@ if (config.basicUser && config.basicPass) {
 
 await app.register(fastifyWs);
 
-// --- Bos: dikendalikan boss-controller (prioritas + antrean, satu broadcast) ---
+// --- Bos + sutradara laporan: satu cue presentasi dalam satu waktu ---
 const boss = createBossController();
-// Idle tick tiap 30-60 dtk
+const director = createReportDirector({ playBoss: (r, m) => boss.play(r, m) });
+// Idle tick tiap 30-60 dtk, hanya saat tak ada cue main/antre.
 (function idleLoop() {
   setTimeout(() => {
-    boss.idleTick();
+    if (director.isIdle()) boss.idleTick();
     idleLoop();
   }, 30000 + Math.random() * 30000);
 })();
@@ -75,7 +77,7 @@ for (const ad of adapters) {
 }
 
 registerRoutes(app, { config, store, boss });
-registerWs(app, { store, boss });
+registerWs(app, { store, boss, director });
 
 // Mode http/file tidak mengirim report_ready: terbitkan dari advisor
 // (nada selalu dari fungsi yang sama). Mode dummy punya jadwal sendiri.

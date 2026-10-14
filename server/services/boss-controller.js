@@ -1,30 +1,23 @@
 /**
- * Pengendali reaksi bos (diekstrak dari index.js agar bisa diuji).
- * Aturan antrean:
- * - Prioritas sama/lebih tinggi menyela langsung (yang disela dibuang).
- * - Prioritas lebih rendah antre (maks 3, buang tertua, buang yang
- *   lebih tua dari 15 dtk) dan dimainkan setelah reaksi berjalan selesai.
- * - Antrean kosong -> kembali idle.
- * Broadcast HANYA lewat subscriber onBoss (satu jalur, tanpa dobel).
- * Tabel prioritas + teks bubble tetap di boss-reactions.js.
+ * Pengendali reaksi bos: play() langsung tanpa antrean/prioritas sendiri
+ * (penjadwalan milik report-director). Kembali idle otomatis setelah
+ * durationMs. Broadcast HANYA lewat subscriber onBoss (satu jalur).
+ * Pesan bos membawa sourceEventId + agentId dari event pemicunya.
  */
-import { reactionForEvent, idleReaction, priorityOf } from './boss-reactions.js';
+import { idleReaction } from './boss-reactions.js';
 
 /**
- * @param {{ schedule?: (fn: Function, ms: number) => any, cancel?: (h: any) => void, now?: () => number }} [opts]
+ * @param {{ schedule?: (fn: Function, ms: number) => any, cancel?: (h: any) => void }} [opts]
  */
 export function createBossController(opts = {}) {
   const schedule = opts.schedule || ((fn, ms) => setTimeout(fn, ms));
   const cancel = opts.cancel || ((h) => clearTimeout(h));
-  const now = opts.now || (() => Date.now());
 
-  /** @type {{ state: string, bubble: string, durationMs: number, seq: number }} */
-  let current = { state: 'idle', bubble: '', durationMs: 6000, seq: 0 };
+  /** @type {{ state: string, bubble: string, durationMs: number, seq: number, sourceEventId: string|null, agentId: string|null }} */
+  let current = { state: 'idle', bubble: '', durationMs: 6000, seq: 0, sourceEventId: null, agentId: null };
   /** @type {Set<Function>} */
   const subs = new Set();
   let timer = null;
-  /** @type {{ reaction: any, at: number }[]} */
-  let queue = [];
 
   function emit() {
     current.seq += 1;
@@ -38,31 +31,31 @@ export function createBossController(opts = {}) {
     }
   }
 
-  /** @param {{ state: string, bubble: string, durationMs: number }} r */
-  function play(r) {
+  /**
+   * Mainkan reaksi (menimpa yang sedang tampil).
+   * @param {{ state: string, bubble: string, durationMs: number }} reaction
+   * @param {{ sourceEventId?: string|null, agentId?: string|null }} [meta]
+   */
+  function play(reaction, meta = {}) {
     if (timer) {
       cancel(timer);
       timer = null;
     }
-    current = { state: r.state, bubble: r.bubble, durationMs: r.durationMs, seq: current.seq };
+    current = {
+      state: reaction.state,
+      bubble: reaction.bubble,
+      durationMs: reaction.durationMs,
+      seq: current.seq,
+      sourceEventId: meta.sourceEventId ?? null,
+      agentId: meta.agentId ?? null,
+    };
     emit();
-    if (r.state !== 'idle') {
-      timer = schedule(advance, r.durationMs);
+    if (reaction.state !== 'idle') {
+      timer = schedule(() => {
+        timer = null;
+        play({ state: 'idle', bubble: '', durationMs: 6000 }, {});
+      }, reaction.durationMs);
     }
-  }
-
-  function prune() {
-    const t = now();
-    queue = queue.filter((q) => t - q.at <= 15000);
-    while (queue.length > 3) queue.shift();
-  }
-
-  function advance() {
-    timer = null;
-    prune();
-    const next = queue.shift();
-    if (next) play(next.reaction);
-    else play({ state: 'idle', bubble: '', durationMs: 6000 });
   }
 
   return {
@@ -73,20 +66,10 @@ export function createBossController(opts = {}) {
       subs.add(fn);
       return () => subs.delete(fn);
     },
-    /** Terima event store; tidak me-return apa pun (broadcast via onBoss). @param {any} event */
-    onEvent: (event) => {
-      const r = reactionForEvent(event);
-      if (!r) return;
-      if (current.state === 'idle' || priorityOf(r.state) >= priorityOf(current.state)) {
-        play(r);
-      } else {
-        queue.push({ reaction: r, at: now() });
-        prune();
-      }
-    },
-    /** Detak idle (30-60 dtk dari index.js). */
+    play,
+    /** Detak idle (index.js hanya memanggil saat director menganggur). */
     idleTick: () => {
-      if (current.state === 'idle') play(idleReaction());
+      if (current.state === 'idle') play(idleReaction(), {});
     },
   };
 }

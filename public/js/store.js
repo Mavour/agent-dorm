@@ -47,6 +47,10 @@ export function createClientStore() {
       events = [...events.slice(-199), e];
       emit('event', { event: e });
     },
+    /** Cue presentasi dari sutradara (tidak disimpan; tidak diputar ulang). @param {any} cue */
+    pushCue(cue) {
+      emit('cue', { cue });
+    },
     /** @param {any[]} list */
     setEvents(list) {
       events = list || [];
