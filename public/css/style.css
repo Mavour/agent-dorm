@@ -118,6 +118,14 @@ body.show-hit .char .hit {
   animation: floaty 2.2s ease-in-out infinite;
 }
 .char .icon-slot img { image-rendering: var(--img-render, auto); display: block; }
+.char .crosshair {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px dashed #22d3ee;
+  border-radius: 50%;
+  pointer-events: none;
+}
 @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .badge {
   position: absolute;

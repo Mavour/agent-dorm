@@ -83,14 +83,19 @@ export function createBubbles(stage) {
     }, 5000);
   }
 
-  /** Dipanggil tiap frame: reposisi semua bubble. */
+  /** Dipanggil tiap frame: reposisi semua bubble, dijepit dalam stage. */
   function frame() {
     const scale = stage.scale;
+    const ox = stage.toScreen(0, 0).x;
+    const sw = stage.W * scale;
     for (const [, s] of slots) {
       if (s.el.style.display === 'none') continue;
       const a = s.anchor();
       const p = stage.toScreen(a.x, a.y - (s.topOffset + 10));
-      s.el.style.left = p.x + 'px';
+      const half = s.el.offsetWidth / 2 || 0;
+      const lo = ox + Math.min(half + 4, sw / 2);
+      const hi = ox + sw - Math.min(half + 4, sw / 2);
+      s.el.style.left = Math.max(lo, Math.min(hi, p.x)) + 'px';
       s.el.style.top = p.y + 'px';
       s.el.style.fontSize = Math.max(11, 13 * Math.max(scale, 0.5)) + 'px';
     }
