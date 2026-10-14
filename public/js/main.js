@@ -10,8 +10,11 @@ import { createAgent } from './agent.js';
 import { createBoss } from './boss.js';
 import { createBubbles } from './bubbles.js';
 import { createPopup } from './popup.js';
+import { createActivities } from './activities.js';
+import { resolveActivities } from './activity-logic.js';
 
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 async function main() {
   const [manifest, state] = await Promise.all([
@@ -57,6 +60,15 @@ async function main() {
   }
   const boss = createBoss(stage, store, bubbles, manifest);
 
+  // Aktivitas client-side (trigger demo + duel).
+  const activities = createActivities({
+    agents,
+    stage,
+    manifest,
+    isPopupOpen: (aid) => popup.isOpen() && popup.openId === aid,
+    reduced: REDUCED,
+  });
+
   // Event mentah -> badge real-time; cue terserial -> bubble/ikon/busy.
   for (const a of agents) a.react();
   store.subscribe((kind, payload) => {
@@ -77,7 +89,7 @@ async function main() {
   });
 
   connectSocket(store, hud);
-  setupDemo();
+  setupDemo(agents, manifest, activities);
   setupDebug(agents);
 
   // Loop animasi (jeda saat tab hidden)
@@ -93,6 +105,7 @@ async function main() {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     for (const a of agents) a.frame(now, dt);
+    activities.tick(now);
     boss.frame(now);
     bubbles.frame();
     frames += 1;
@@ -106,8 +119,8 @@ async function main() {
   requestAnimationFrame(loop);
 }
 
-/** Panel demo: tombol D atau klik DEMO; POST /api/demo/trigger. */
-function setupDemo() {
+/** Panel demo: tombol D atau klik DEMO; POST /api/demo/trigger + aktivitas lokal. */
+function setupDemo(agents, manifest, activities) {
   const btn = document.getElementById('demo-btn');
   const root = document.getElementById('demo-root');
   let panel = null;
@@ -148,7 +161,55 @@ function setupDemo() {
       });
       panel.appendChild(b);
     }
+    // Bagian aktivitas: client-side saja (tanpa panggilan server).
+    const sec = document.createElement('div');
+    sec.className = 'muted';
+    sec.style.cssText = 'font-size:11px;margin-top:6px;';
+    sec.textContent = 'Aktivitas';
+    panel.appendChild(sec);
+    const order = ['exitbot', 'portfolio', 'alert', 'lpwatcher'];
+    const allActs = resolveActivities(manifest);
+    for (const aid of order) {
+      const names = Object.keys(allActs[aid] || {});
+      const aname = (manifest.agents[aid] && manifest.agents[aid].name) || aid;
+      for (const n of names) {
+        panel.appendChild(actButton(`${aname.replace('ō', 'o')}: ${n}`, () => activities.trigger(aid, n)));
+      }
+    }
+    panel.appendChild(actButton('Adu pedang ExitBot vs LP Watcher', () => {
+      if (activities.tryStart()) return { ok: true };
+      return { ok: false, reason: 'Keduanya harus bebas' };
+    }));
     root.appendChild(panel);
+  }
+
+  /**
+   * Tombol aktivitas: gagal -> tampilkan alasan singkat di tombol.
+   * @param {string} label
+   * @param {() => { ok: boolean, reason?: string }} fn
+   */
+  function actButton(label, fn) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      let r;
+      try {
+        r = fn();
+      } catch {
+        r = { ok: false, reason: 'Gagal' };
+      }
+      if (!r.ok) {
+        const old = b.textContent;
+        b.textContent = r.reason || 'Tak tersedia';
+        b.disabled = true;
+        setTimeout(() => {
+          b.textContent = old;
+          b.disabled = false;
+        }, 1500);
+      }
+    });
+    return b;
   }
 
   if (btn) btn.addEventListener('click', (e) => {
@@ -183,7 +244,9 @@ function paintDebug(agents) {
   else lines.push('cue - (antre 0)');
   for (const a of agents) {
     const d = a.debug();
-    lines.push(`${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`);
+    let line = `${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`;
+    if (d.act) line += ` act:${d.act}#${d.frame}`;
+    lines.push(line);
   }
   el.textContent = lines.join('\n');
 }
