@@ -62,13 +62,18 @@ export function renderExitbot(body, snap, h) {
   body.appendChild(h.t('h3', 'Eksekusi terbaru'));
   if (!m.recentExecutions.length) body.appendChild(h.t('p', 'Belum ada eksekusi.', 'muted'));
   for (const x of m.recentExecutions) {
-    const row = h.el('div', 'row');
+    const row = h.el('div', 'crow');
+    const top = h.el('div', 'crow-top');
     const left = h.el('span');
-    left.textContent = `${x.pair} · ${REASON_ID[x.reason] || x.reason} · ${shortSig(x.txSig)} · ${rel(x.ts)}`;
+    left.textContent = `${x.pair} · ${REASON_ID[x.reason] || x.reason}`;
     const right = h.el('span', x.pnlUsd >= 0 ? 'pos' : 'neg');
     right.textContent = signedUsd(x.pnlUsd);
-    row.appendChild(left);
-    row.appendChild(right);
+    top.appendChild(left);
+    top.appendChild(right);
+    row.appendChild(top);
+    const sub = h.el('div', 'crow-sub');
+    sub.textContent = `${shortSig(x.txSig)} · ${rel(x.ts)}`;
+    row.appendChild(sub);
     body.appendChild(row);
   }
 }

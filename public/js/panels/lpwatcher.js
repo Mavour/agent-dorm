@@ -37,15 +37,16 @@ export function renderLpwatcher(body, snap, h) {
   body.appendChild(h.t('h3', `Posisi (${m.positions.length})`));
   const sorted = [...m.positions].sort((a, b) => Number(a.inRange) - Number(b.inRange));
   for (const p of sorted) {
-    const card = h.el('div', 'card');
-    const head = h.el('div', 'row');
+    // Baris ringkas dua baris: baris 1 nama + chip, baris 2 range bar + metrik sebaris.
+    const card = h.el('div', 'crow');
+    const top = h.el('div', 'crow-top');
     const nm = h.el('strong');
     nm.textContent = `${p.pair} · ${p.protocol}`;
     const st = h.el('span', 'chip ' + (p.inRange ? 'chip-green' : 'chip-amber'));
     st.textContent = p.inRange ? 'in range' : 'OUT';
-    head.appendChild(nm);
-    head.appendChild(st);
-    card.appendChild(head);
+    top.appendChild(nm);
+    top.appendChild(st);
+    card.appendChild(top);
     // Range bar: posisi price di antara low..high (clamp 0-100)
     const bar = h.el('div', 'rangebar' + (p.inRange ? '' : ' out'));
     const span = p.rangeHigh - p.rangeLow;
@@ -58,12 +59,12 @@ export function renderLpwatcher(body, snap, h) {
     bar.appendChild(fill);
     bar.appendChild(mark);
     card.appendChild(bar);
-    const det = h.el('div', 'muted');
-    det.textContent = `${price(p.rangeLow)}..${price(p.rangeHigh)} · harga ${price(p.price)} · nilai ${usd(p.valueUsd)} · fee ${usd(p.feesEarnedUsd)} · IL ${p.ilPct}%`;
+    const det = h.el('div', 'crow-sub');
+    det.textContent = `${price(p.rangeLow)}..${price(p.rangeHigh)} · @${price(p.price)} · ${usd(p.valueUsd)} · fee ${usd(p.feesEarnedUsd)} · IL ${p.ilPct}% · `;
+    const pnlS = h.el('span', p.unrealizedPnlUsd >= 0 ? 'pos' : 'neg');
+    pnlS.textContent = signedUsd(p.unrealizedPnlUsd);
+    det.appendChild(pnlS);
     card.appendChild(det);
-    const pnlLine = h.el('div', p.unrealizedPnlUsd >= 0 ? 'pos' : 'neg');
-    pnlLine.textContent = `PnL ${signedUsd(p.unrealizedPnlUsd)}`;
-    card.appendChild(pnlLine);
     body.appendChild(card);
   }
 }

@@ -189,15 +189,35 @@ body.show-hit .char .hit {
   pointer-events: auto;
   width: 380px;
   max-width: calc(100vw - 20px);
-  max-height: calc(100vh - 120px);
-  overflow: auto;
+  max-height: min(70vh, 560px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 12px 12px 12px 14px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
-.popup header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.popup::-webkit-scrollbar { width: 6px; }
+.popup::-webkit-scrollbar-track { background: transparent; }
+.popup::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
+.popup::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.32); }
+.popup::-webkit-scrollbar-button { display: none; }
+.popup header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  background: var(--panel);
+  margin: -12px -12px 0 -14px;
+  padding: 12px 12px 8px 14px;
+}
 .popup header h2 { margin: 0; font-size: 17px; flex: 1; }
 .popup .x {
   background: none; border: none; color: var(--muted);
@@ -225,6 +245,11 @@ body.show-hit .char .hit {
 .pos { color: var(--ok); }
 .neg { color: var(--err); }
 .row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+/* Baris ringkas dua baris untuk daftar panjang (posisi LP, eksekusi, transaksi). */
+.crow { padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+.crow-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.crow-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.popup h3 { font-size: 13px; margin: 10px 0 4px; }
 .rangebar { position: relative; height: 8px; background: #2c2c3d; border-radius: 4px; margin: 4px 0; }
 .rangebar .fill { position: absolute; top: 0; bottom: 0; background: #3b82f6; border-radius: 4px; }
 .rangebar .mark { position: absolute; top: -3px; width: 3px; height: 14px; background: #fff; }

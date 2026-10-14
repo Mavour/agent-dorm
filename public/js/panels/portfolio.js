@@ -115,13 +115,18 @@ function renderTx(pane, snap, h) {
   const list = (snap.metrics.transactions || []).slice(0, 20);
   pane.appendChild(h.t('h3', `Transaksi terakhir (${list.length})`));
   for (const tx of list) {
-    const row = h.el('div', 'row');
+    const row = h.el('div', 'crow');
+    const top = h.el('div', 'crow-top');
     const l = h.el('span');
-    l.textContent = `${tx.category} · ${tx.note || ''} · ${rel(tx.ts)}`;
+    l.textContent = `${tx.category} · ${tx.note || ''}`;
     const v = h.el('span', tx.kind === 'income' ? 'pos' : 'neg');
     v.textContent = `${tx.kind === 'income' ? '+' : '−'}${usd(tx.amountUsd)}`;
-    row.appendChild(l);
-    row.appendChild(v);
+    top.appendChild(l);
+    top.appendChild(v);
+    row.appendChild(top);
+    const sub = h.el('div', 'crow-sub');
+    sub.textContent = rel(tx.ts);
+    row.appendChild(sub);
     pane.appendChild(row);
   }
 }
