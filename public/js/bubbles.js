@@ -10,7 +10,7 @@ export function createBubbles(stage) {
   /**
    * @param {string} charId
    * @param {() => {x:number,y:number}} anchor posisi jangkar (kaki) di stage
-   * @param {number} topOffset jarak dari kaki ke atas sprite (px stage)
+   * @param {number|(() => number)} topOffset jarak kaki ke atas sprite (px stage), atau fungsi dinamis
    */
   function register(charId, anchor, topOffset) {
     const el = document.createElement('div');
@@ -91,7 +91,8 @@ export function createBubbles(stage) {
     for (const [, s] of slots) {
       if (s.el.style.display === 'none') continue;
       const a = s.anchor();
-      const p = stage.toScreen(a.x, a.y - (s.topOffset + 10));
+      const to = typeof s.topOffset === 'function' ? s.topOffset() : s.topOffset;
+      const p = stage.toScreen(a.x, a.y - (to + 10));
       const half = s.el.offsetWidth / 2 || 0;
       const lo = ox + Math.min(half + 4, sw / 2);
       const hi = ox + sw - Math.min(half + 4, sw / 2);
