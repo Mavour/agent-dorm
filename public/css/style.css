@@ -109,7 +109,11 @@ body.show-hit .char .hit {
 .char:focus { outline: 2px solid var(--warn); outline-offset: 4px; }
 .char.offline .sprite { filter: grayscale(0.8) brightness(0.6); }
 @keyframes bob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 4px; } }
+/* Hop CSS hanya cadangan untuk agen tanpa rig (agen ber-rig tak diberi .walking). */
 .char.walking .sprite { animation: bob 0.35s infinite; }
+/* Rig jalan tiga lapis (badan + dua kaki, terpotong via clip-path). */
+.char .walkrig { will-change: transform; }
+.char .walkrig img { image-rendering: var(--img-render, auto); }
 @keyframes shake { 0%, 100% { margin-left: 0; } 25% { margin-left: -3px; } 75% { margin-left: 3px; } }
 .char.shake .sprite { animation: shake 0.3s 1; }
 .char .icon-slot {
@@ -328,4 +332,5 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
 @media (prefers-reduced-motion: reduce) {
   .char .sprite { animation: none !important; }
   .char .icon-slot { animation: none !important; }
+  .char .walkrig { display: none !important; }
 }

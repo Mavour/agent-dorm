@@ -9,6 +9,8 @@ import { homeFor, pickWanderTarget } from './wander.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
 import { resolveActivities, resolveFeet } from './activity-logic.js';
+import { advancePhase, walkPose, STRIDE, AMP_RAMP } from './walk-logic.js';
+import { createWalkRig } from './walk-rig.js';
 
 const SPEED = 35; // px stage per detik
 const STATUS_COLOR = { ok: '#4ade80', warn: '#fbbf24', error: '#f87171', offline: '#9ca3af' };
@@ -18,6 +20,8 @@ const ICON_SCALE = 0.6;
 const ICON_SCALE_OVERRIDE = { alert: 0.7 };
 // Sisi emote per agen (alert kiri karena banner-nya di kanan).
 const ICON_SIDE = { exitbot: 'right', portfolio: 'right', lpwatcher: 'right', alert: 'left' };
+// Angkat kaki maks per agen (px tampil; hakama Karo lebar jadi kecil).
+const WALK_LIFT = { exitbot: 8, portfolio: 5, alert: 7, lpwatcher: 7 };
 
 /**
  * @param {object} opts {id, cfg (manifest agent), acts, manifest, store, stage, bubbles, icons, onOpen}
@@ -75,6 +79,20 @@ export function createAgent(opts) {
   hit.style.bottom = '0px';
   hit.setAttribute('aria-hidden', 'true');
 
+  // Rig jalan tiga lapis (tanpa rig saat reduced-motion atau tanpa walkRig).
+  const rigApi =
+    !REDUCED && cfg.walkRig
+      ? createWalkRig({
+          charEl: el,
+          beforeEl: hit,
+          src: '/assets/' + cfg.sprite,
+          w,
+          h,
+          rig: cfg.walkRig,
+          feet: resolveFeet(cfg),
+        })
+      : null;
+
   el.appendChild(shadow);
   el.appendChild(img);
   el.appendChild(hit);
@@ -110,6 +128,8 @@ export function createAgent(opts) {
     unacked: 0, // jumlah warn/critical belum diakui
     acked: new Set(), // id alert yang sudah diakui via popup
     dir: 1,
+    phase: 0, // fase langkah (radian, maju sejauh jarak tempuh)
+    amp: 0, // amplitudo jalan 0..1 (merambat 0,15 dtk)
   };
 
   const layer = createIconLayer({
@@ -316,6 +336,7 @@ export function createAgent(opts) {
       const dist = Math.hypot(dx, dy);
       const step = SPEED * dt;
       if (dist <= step) {
+        S.phase = advancePhase(S.phase, dist, STRIDE);
         S.x = S.target.x;
         S.y = S.target.y;
         S.state = 'idle';
@@ -323,16 +344,42 @@ export function createAgent(opts) {
         // Penahan duel: idle panjang agar manajer sempat memulai duel.
         S.idleUntil = act.st.duelHold ? now + 30000 : now + 2000 + Math.random() * 4000;
       } else {
+        S.phase = advancePhase(S.phase, step, STRIDE);
         S.x += (dx / dist) * step;
         S.y += (dy / dist) * step;
         S.dir = dx < 0 ? -1 : 1;
       }
     }
 
+    // Rig jalan: tampil saat berjalan; luruh saat berhenti agar tak meletup;
+    // aktivitas/alert/sibuk/offline menyembunyikannya langsung.
+    if (rigApi) {
+      const lift = { lift: WALK_LIFT[id] ?? 7 };
+      if (S.state === 'walking') {
+        S.amp = Math.min(1, S.amp + dt / AMP_RAMP);
+        rigApi.show();
+        img.style.visibility = 'hidden';
+        rigApi.apply(S.dir, walkPose(S.phase, S.amp, lift));
+      } else if (S.state === 'idle' && S.amp > 0) {
+        S.amp = Math.max(0, S.amp - dt / AMP_RAMP);
+        if (S.amp <= 0) {
+          rigApi.hide();
+          img.style.visibility = 'visible';
+        } else {
+          rigApi.apply(S.dir, walkPose(S.phase, S.amp, lift));
+        }
+      } else {
+        S.amp = 0;
+        if (rigApi.visible()) rigApi.hide();
+        if (img.style.visibility === 'hidden') img.style.visibility = 'visible';
+      }
+    }
+
     // Lapisan ikon + badge mengikuti tiap frame (kedaluwarsa, arah, posisi).
     layer.tick(now, S.state === 'alert' || offline);
 
-    el.classList.toggle('walking', S.state === 'walking' && !REDUCED);
+    // Kelas hop CSS hanya cadangan untuk agen tanpa rig (rig tak butuh hop).
+    el.classList.toggle('walking', S.state === 'walking' && !REDUCED && !rigApi);
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
     el.style.zIndex = String(Math.round(S.y));
     // Saat aktivitas main, player yang mengatur transform (flip bisa beda arah).
@@ -391,6 +438,8 @@ export function createAgent(opts) {
         cueUntil: act.st.cueUntil,
         act: act.st.cur ? act.st.cur.name : null,
         frame: cur ? cur.index : -1,
+        phase: Math.round(S.phase * 100) / 100,
+        amp: Math.round(S.amp * 100) / 100,
       };
     },
   };

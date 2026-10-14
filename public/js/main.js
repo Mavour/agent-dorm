@@ -246,6 +246,7 @@ function paintDebug(agents) {
     const d = a.debug();
     let line = `${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`;
     if (d.act) line += ` act:${d.act}#${d.frame}`;
+    if (typeof d.phase === 'number') line += ` ph:${d.phase} amp:${d.amp}`;
     lines.push(line);
   }
   el.textContent = lines.join('\n');
