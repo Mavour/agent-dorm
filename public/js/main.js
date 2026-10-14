@@ -93,7 +93,7 @@ async function main() {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     for (const a of agents) a.frame(now, dt);
-    boss.frame();
+    boss.frame(now);
     bubbles.frame();
     frames += 1;
     if (DEBUG && now - fpsAt > 1000) {

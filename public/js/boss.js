@@ -1,7 +1,14 @@
 /**
  * Bos: duduk di bossSeat, ganti sprite sesuai state dari server,
  * bubble dari server; klik -> bubble acak sesuai situasi.
+ * Aktivitas idle "kipas" dimainkan sendiri; pesan server selalu menang.
  */
+import { createActivityPlayer } from './activity-player.js';
+import { resolveActivities, resolveFeet } from './activity-logic.js';
+
+const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const KIPAS_EVERY = [40000, 90000];
+const KIPAS_PLAY = [6000, 10000];
 export function createBoss(stage, store, bubbles, manifest) {
   const seat = stage.bossSeat();
   const size = manifest.boss.size;
@@ -59,7 +66,23 @@ export function createBoss(stage, store, bubbles, manifest) {
   }
   setSprite('idle');
 
-  bubbles.register('boss', () => ({ x: seat.x, y: seat.y }), h);
+  // Pemutar kipas (tak ada saat reduced-motion). Bos tak pernah flip (dir 1).
+  const acts = resolveActivities(manifest).boss || {};
+  const player = REDUCED
+    ? null
+    : createActivityPlayer({
+        img,
+        label: 'boss',
+        acts,
+        base: { size: manifest.boss.size, feet: resolveFeet({ size: manifest.boss.size, feet: manifest.boss.feet }) },
+      });
+  let kipasEndsAt = 0;
+  let nextKipasAt = performance.now() + KIPAS_EVERY[0] + Math.random() * (KIPAS_EVERY[1] - KIPAS_EVERY[0]);
+  let reactUntil = 0; // reaksi server aktif sampai timestamp ini
+
+  bubbles.register('boss', () => ({ x: seat.x, y: seat.y }), () =>
+    Math.max(h, player ? player.topOffset() : 0),
+  );
 
   // Timer pengaman: kembali idle kalau tidak ada pesan bos baru dalam
   // durationMs + 1500 ms (pesan hilang / reconnect). seq mencegah replay
@@ -69,13 +92,21 @@ export function createBoss(stage, store, bubbles, manifest) {
   store.subscribe((kind, payload) => {
     if (kind === 'boss') {
       const b = payload.boss;
-      setSprite(b.state);
       const seq = b.seq || 0;
       if (seq <= lastSeq) return;
       lastSeq = seq;
+      // Pesan server baru menghentikan kipas seketika.
+      if (player) player.stop();
+      kipasEndsAt = 0;
+      setSprite(b.state);
+      reactUntil = performance.now() + (b.durationMs || 6000);
       if (b.bubble) bubbles.sayLatest('boss', b.bubble);
       if (safety) clearTimeout(safety);
-      safety = setTimeout(() => setSprite('idle'), (b.durationMs || 6000) + 1500);
+      safety = setTimeout(() => {
+        if (player) player.stop();
+        kipasEndsAt = 0;
+        setSprite('idle');
+      }, (b.durationMs || 6000) + 1500);
     }
   });
 
@@ -106,7 +137,26 @@ export function createBoss(stage, store, bubbles, manifest) {
     }
   });
 
-  function frame() {
+  /** @param {number} now */
+  function frame(now) {
+    // Kipas idle tiap 40-90 dtk selama tak ada reaksi server aktif.
+    if (player) {
+      if (kipasEndsAt) {
+        if (now >= kipasEndsAt) {
+          player.stop();
+          kipasEndsAt = 0;
+          nextKipasAt = now + KIPAS_EVERY[0] + Math.random() * (KIPAS_EVERY[1] - KIPAS_EVERY[0]);
+        } else {
+          player.tick(now, 1);
+        }
+      } else if (now >= reactUntil && now >= nextKipasAt && player.available('kipas')) {
+        if (player.play('kipas')) {
+          kipasEndsAt = now + KIPAS_PLAY[0] + Math.random() * (KIPAS_PLAY[1] - KIPAS_PLAY[0]);
+        } else {
+          nextKipasAt = now + 10000;
+        }
+      }
+    }
     el.style.transform = `translate3d(${seat.x}px, ${seat.y}px, 0)`;
     el.style.zIndex = String(Math.round(seat.y));
     const p = stage.toScreen(seat.x, seat.y);
