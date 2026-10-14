@@ -77,6 +77,7 @@ export function createActivityDriver(opts) {
   function idlePick(now, unacked) {
     if (reduced || !player) return null;
     if (unacked > 0) return null;
+    if (st.duelHold) return null;
     if (Math.random() >= IDLE_PROBABILITY) return null;
     const pick = pickIdleActivity(id, acts, Math.random, now, st.coolUntil);
     if (!pick || !player.available(pick.name)) return null;
