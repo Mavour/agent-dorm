@@ -43,6 +43,7 @@ async function main() {
     const a = createAgent({
       id,
       cfg: manifest.agents[id],
+      manifest,
       store,
       stage,
       bubbles,

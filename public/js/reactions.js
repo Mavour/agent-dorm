@@ -24,7 +24,7 @@ export function noteEvent(ctx, event) {
 
 /**
  * Presentasi penuh satu cue terserial.
- * @param {{ S: any, id: string, showIcon: (n: string, ms: number) => void, hideIcon: () => void, busy: (icon: string, ms: number, now: number) => void, bubbles: any, REDUCED: boolean }} ctx
+ * @param {{ S: any, id: string, showIcon: (n: string, ms: number) => void, hideIcon: () => void, busy: (icon: string, ms: number, now: number) => void, bubbles: any, REDUCED: boolean, isActive?: () => boolean }} ctx
  * @param {{ cueId: string, agentId: string, event: any, durationMs: number }} cue
  */
 export function reactToCue(ctx, cue) {
@@ -47,7 +47,8 @@ export function reactToCue(ctx, cue) {
     setTimeout(() => {
       if (!ctx.REDUCED) ctx.showIcon(pnl >= 0 ? 'sparkle' : 'anger', 4000);
       S.busyUntil = performance.now() + 4000;
-      S.state = 'busy';
+      // Jangan rebut state aktivitas yang sedang main.
+      if (!ctx.isActive || !ctx.isActive()) S.state = 'busy';
     }, ctx.REDUCED ? 0 : 2500);
   } else if (event.type === 'coin_found') {
     if (!ctx.REDUCED) ctx.showIcon('think', 3000);
@@ -56,7 +57,7 @@ export function reactToCue(ctx, cue) {
     setTimeout(() => {
       if (!ctx.REDUCED) ctx.showIcon('sparkle', 3000);
       S.busyUntil = performance.now() + 3000;
-      S.state = 'busy';
+      if (!ctx.isActive || !ctx.isActive()) S.state = 'busy';
     }, ctx.REDUCED ? 0 : 3000);
   } else if (event.type === 'report_ready') {
     const tone = d.tone || 'neutral';

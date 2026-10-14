@@ -5,6 +5,10 @@
  */
 import { noteEvent, reactToCue } from './reactions.js';
 import { createIconLayer } from './icon-layer.js';
+import { homeFor, pickWanderTarget } from './wander.js';
+import { createActivityPlayer } from './activity-player.js';
+import { createActivityDriver, eventActivityFor } from './agent-activity.js';
+import { resolveActivities, resolveFeet } from './activity-logic.js';
 
 const SPEED = 35; // px stage per detik
 const STATUS_COLOR = { ok: '#4ade80', warn: '#fbbf24', error: '#f87171', offline: '#9ca3af' };
@@ -16,10 +20,13 @@ const ICON_SCALE_OVERRIDE = { alert: 0.7 };
 const ICON_SIDE = { exitbot: 'right', portfolio: 'right', lpwatcher: 'right', alert: 'left' };
 
 /**
- * @param {object} opts {id, cfg (manifest agent), store, stage, bubbles, icons, onOpen}
+ * @param {object} opts {id, cfg (manifest agent), acts, manifest, store, stage, bubbles, icons, onOpen}
  */
 export function createAgent(opts) {
   const { id, cfg, store, stage, bubbles, icons, onOpen } = opts;
+  const manifest = opts.manifest || {};
+  // Tabel aktivitas: manifest dulu, cadangan bila tak ada (lihat activity-logic.js).
+  const acts = resolveActivities(manifest)[id] || null;
   const [w, h] = cfg.size;
   const chars = document.getElementById('chars');
   const ui = stage.uiEl;
@@ -88,9 +95,8 @@ export function createAgent(opts) {
 
   const area = stage.walkArea();
   const seat = stage.bossSeat();
-  const order = ['exitbot', 'portfolio', 'alert', 'lpwatcher'];
-  const spawnFrac = [0.18, 0.36, 0.64, 0.82];
-  const home = { x: spawnFrac[order.indexOf(id)] * stage.W, y: 0.9 * stage.H };
+  const home = homeFor(id, stage.W, stage.H);
+  const peers = () => (window.__AGENTS__ || []).filter((o) => o !== api).map((o) => o.debug().target || o.debug());
 
   const S = {
     id,
@@ -127,25 +133,19 @@ export function createAgent(opts) {
   const showBadge = (n) => layer.showBadge(n);
   const hideBadge = () => layer.hideBadge();
 
+  // Pemutar aktivitas + driver (null saat reduced-motion: tanpa aktivitas).
+  const player = REDUCED
+    ? null
+    : createActivityPlayer({
+        img,
+        label: id,
+        acts: acts || {},
+        base: { size: cfg.size, feet: resolveFeet(cfg) },
+      });
+  const act = createActivityDriver({ id, acts, player, reduced: REDUCED, statusOf });
+
   function pickTarget() {
-    for (let i = 0; i < 12; i++) {
-      const x = area.xMin + Math.random() * (area.xMax - area.xMin);
-      const y = area.yMin + Math.random() * (area.yMax - area.yMin);
-      // Zona eksklusi bos: 300px lebar, 70px atas s/d 40px bawah kursi
-      if (Math.abs(x - seat.x) < 150 && y > seat.y - 70 && y < seat.y + 40) continue;
-      // Jarak min 120px dari target agen lain
-      let ok = true;
-      for (const o of window.__AGENTS__ || []) {
-        if (o === api) continue;
-        const t = o.debug().target || o.debug();
-        if (t && t.x !== undefined && Math.hypot(t.x - x, t.y - y) < 120) {
-          ok = false;
-          break;
-        }
-      }
-      if (ok) return { x, y };
-    }
-    return { x: home.x, y: home.y };
+    return pickWanderTarget(area, seat, peers, home);
   }
 
   function statusOf() {
@@ -198,11 +198,60 @@ export function createAgent(opts) {
   }
 
   /**
-   * Cue terserial dari director -> bubble + ikon + busy.
+   * Cue terserial dari director -> bubble + ikon + busy + aktivitas event.
    * @param {any} cue
    */
   function onCue(cue) {
-    reactToCue({ S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED }, cue);
+    act.st.cueSeq += 1;
+    act.st.cueUntil = performance.now() + (cue.durationMs || 6500);
+    reactToCue(
+      { S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED, isActive: () => !!act.st.cur },
+      cue,
+    );
+    // Aktivitas event menyela aktivitas idle (alert/offline dinilai di frame).
+    const ev = cue.event || {};
+    const aname = eventActivityFor(ev.type, id);
+    if (aname && playActivity(aname, cue.durationMs || 6500, 'event')) {
+      // state -> activity (menimpa busy dari reactToCue)
+    }
+  }
+
+  /**
+   * Mainkan aktivitas bernama (demo/duel/paksa). Popup yang terbuka tak dihentikan.
+   * @param {string} name
+   * @param {number} durationMs
+   * @param {'idle'|'event'|'demo'|'duel'} [kind='demo']
+   */
+  function playActivity(name, durationMs, kind = 'demo') {
+    if (!act.play(name, durationMs, kind, S.unacked)) return false;
+    S.state = 'activity';
+    S.target = null;
+    return true;
+  }
+
+  function stopActivity() {
+    act.stop();
+    if (S.state === 'activity') {
+      S.state = 'idle';
+      S.idleUntil = performance.now() + 1500;
+    }
+  }
+
+  /** info aktivitas berjalan (atau null). */
+  function activityInfo() {
+    return act.st.cur ? { ...act.st.cur } : null;
+  }
+
+  /** urutan cue terakhir (untuk deteksi interupsi duel). */
+  function cueSeq() {
+    return act.st.cueSeq;
+  }
+
+  /** Jalan duel ke titik eksplisit (logika jalan yang sudah ada). */
+  function duelTo(x, y) {
+    act.st.duelHold = true;
+    S.target = { x, y };
+    S.state = 'walking';
   }
 
   /** @param {string} icon @param {number} ms @param {number} now */
@@ -221,7 +270,11 @@ export function createAgent(opts) {
 
     if (offline) {
       S.state = 'offline';
+      act.stop();
       if (!REDUCED && !layer.visible()) showIcon('sleep', 60000);
+    } else if (S.state === 'activity') {
+      // Diam di tempat; alert baru menang, selesai -> idle + cooldown.
+      act.tickActivity(now, S);
     } else if (S.state === 'alert' && S.unacked === 0) {
       // Alert sudah diakui/di-resolve -> kembali idle
       S.state = 'idle';
@@ -249,8 +302,13 @@ export function createAgent(opts) {
       S.y = home.y;
     } else if (S.state === 'idle') {
       if (now >= S.idleUntil) {
-        S.target = pickTarget();
-        S.state = 'walking';
+        const pick = act.idlePick(now, S.unacked);
+        if (pick && playActivity(pick.name, pick.durationMs, 'idle')) {
+          // state -> activity
+        } else {
+          S.target = pickTarget();
+          S.state = 'walking';
+        }
       }
     } else if (S.state === 'walking' && S.target) {
       const dx = S.target.x - S.x;
@@ -262,7 +320,8 @@ export function createAgent(opts) {
         S.y = S.target.y;
         S.state = 'idle';
         S.target = null;
-        S.idleUntil = now + 2000 + Math.random() * 4000;
+        // Penahan duel: idle panjang agar manajer sempat memulai duel.
+        S.idleUntil = act.st.duelHold ? now + 30000 : now + 2000 + Math.random() * 4000;
       } else {
         S.x += (dx / dist) * step;
         S.y += (dy / dist) * step;
@@ -276,7 +335,9 @@ export function createAgent(opts) {
     el.classList.toggle('walking', S.state === 'walking' && !REDUCED);
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
     el.style.zIndex = String(Math.round(S.y));
-    img.style.transform = S.dir < 0 ? 'scaleX(-1)' : 'none';
+    // Saat aktivitas main, player yang mengatur transform (flip bisa beda arah).
+    if (act.st.cur && player) player.tick(now, S.dir);
+    else img.style.transform = S.dir < 0 ? 'scaleX(-1)' : 'none';
 
     // Label di bawah kaki (posisi layar)
     const p = stage.toScreen(S.x, S.y);
@@ -302,7 +363,7 @@ export function createAgent(opts) {
     }
   });
 
-  bubbles.register(id, anchor, h);
+  bubbles.register(id, anchor, () => Math.max(h, player ? player.topOffset() : 0));
 
   const api = {
     id,
@@ -310,10 +371,27 @@ export function createAgent(opts) {
     react,
     onEvent,
     onCue,
+    playActivity,
+    stopActivity,
+    activityInfo,
+    cueSeq,
+    duelTo,
     anchor,
     topOffset: h,
     debug() {
-      return { state: S.state, x: Math.round(S.x), y: Math.round(S.y), target: S.target, status: statusOf() };
+      const cur = player ? player.current() : null;
+      return {
+        state: S.state,
+        x: Math.round(S.x),
+        y: Math.round(S.y),
+        target: S.target,
+        status: statusOf(),
+        unacked: S.unacked,
+        cueSeq: act.st.cueSeq,
+        cueUntil: act.st.cueUntil,
+        act: act.st.cur ? act.st.cur.name : null,
+        frame: cur ? cur.index : -1,
+      };
     },
   };
   return api;
