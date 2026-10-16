@@ -180,6 +180,7 @@ export function createActivities(opts) {
       forced: force,
     };
     sched.notifyStart();
+    console.info(`[duel] mulai! (${force ? 'paksa' : 'otomatis'})`);
     return { ok: true };
   }
 

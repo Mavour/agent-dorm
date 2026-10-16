@@ -91,6 +91,7 @@ async function main() {
 
   connectSocket(store, hud);
   setupDemo(agents, manifest, activities);
+  setupDuelFun(activities);
   window.__PATH_DEBUG__ = { walkBand, blockedRect };
   window.__ACTIVITIES__ = activities;
   setupDebug(agents, stage, activities);
@@ -230,6 +231,55 @@ function setupDemo(agents, manifest, activities) {
       if (!btn.hidden) toggle();
     }
   });
+}
+
+/** Tombol fun duel: tekan F untuk paksa duel, atau buka ?duel=1 untuk autotest. */
+function setupDuelFun(activities) {
+  const hint = document.getElementById('hint');
+  const origHint = hint ? hint.textContent : '';
+  let hintTimer = null;
+  function sayHint(msg) {
+    if (!hint) return;
+    hint.textContent = msg;
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => {
+      hint.textContent = origHint;
+    }, 4000);
+  }
+  function forceDuel(source) {
+    if (!window.__DEMO_CONTROLS__) {
+      sayHint('Mode demo mati.');
+      return;
+    }
+    const fn =
+      typeof activities.forceStart === 'function'
+        ? () => activities.forceStart()
+        : () => (activities.tryStart() ? { ok: true } : { ok: false, reason: 'Terhalang' });
+    let r;
+    try {
+      r = fn();
+    } catch {
+      r = { ok: false, reason: 'Gagal' };
+    }
+    if (r.ok) {
+      console.info(`[duel] mulai via ${source}!`);
+      sayHint('⚔️ Duel dimulai! ExitBot vs LP Watcher');
+    } else {
+      const reasons = r.reasons || (r.reason ? [r.reason] : []);
+      console.info(`[duel] ${source} terhalang:`, reasons);
+      sayHint('⚔️ Duel tertahan: ' + (reasons.join(', ').slice(0, 90) || 'coba lagi'));
+    }
+  }
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'f' || e.key === 'F') && document.activeElement && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+      forceDuel('tombol F');
+    }
+  });
+  // Autotest: ?duel=1 -> paksa duel 2,5 dtk setelah muat.
+  if (new URLSearchParams(location.search).get('duel') === '1') {
+    setTimeout(() => forceDuel('?duel=1'), 2500);
+  }
+  if (hint) hint.textContent = (origHint ? origHint + ' ' : '') + '· tekan F untuk duel';
 }
 
 /** @param {any[]} agents @param {any} stage @param {any} activities */
