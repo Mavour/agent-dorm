@@ -17,6 +17,9 @@ import { unlock, setMuted, isMuted } from './sound.js';
 
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Penanda build (cek kode baru vs cache lama via console/?debug=1).
+window.__BUILD__ = 'dash-lunge-2';
+console.info(`[dorm] build ${window.__BUILD__}`);
 
 async function main() {
   const [manifest, state] = await Promise.all([
@@ -360,7 +363,7 @@ function duelCountdown(di) {
 function paintDebug(agents, activities) {
   const el = document.getElementById('debug');
   if (!el) return;
-  const lines = [`FPS ${window.__FPS__ || 0}`];
+  const lines = [`Dorm ${window.__BUILD__ || '?'} · FPS ${window.__FPS__ || 0}`];
   const dir = window.__DIRECTOR__;
   if (dir) lines.push(`cue ${dir.type || '-'} oleh ${dir.agentId || '-'} (antre ${dir.queueLength ?? 0})`);
   else lines.push('cue - (antre 0)');
