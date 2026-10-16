@@ -10,6 +10,9 @@ export const FRAME_PX = 7;
 // Hadap jalan: komponen horizontal min 0,35 x vertikal, anti-flip 0,3 dtk.
 export const FLIP_SLOPE = 0.35;
 export const FLIP_HYSTERESIS_MS = 300;
+// Pose menerkam (duel dash): condong dalam, kaki jongkok, kayuhan lebar.
+// Koordinat lokal menghadap kanan; cermin via rig (origin di kaki).
+export const LUNGE = { LEAN: 14, LEAN_SWING: 4, CROUCH: 7, CROUCH_BOB: 2, LIFT: 10, SHIFT: 6 };
 // Kaki diperlihatkan OVERLAP px di atas bandTop agar tak ada celah
 // saat badan mengayun ke atas (bodyBob maks 2 px).
 export const FOOT_OVERLAP = 3;
@@ -85,6 +88,26 @@ export function shouldFlip(dx, dy, lastDir, lastFlipAt, now) {
   if (want === base) return base;
   if (now - lastFlipAt < FLIP_HYSTERESIS_MS) return base;
   return want;
+}
+
+/**
+ * Pose menerkam untuk duel dash (koordinat lokal menghadap kanan).
+ * Badan condong ke depan 10-18°, jongkok 5-9 px, kaki mengayuh cepat
+ * bergantian. Intensitas penuh seketika (tanpa ramp) agar terasa menyergap.
+ * @param {number} phase radian (maju seiring jarak tempuh)
+ * @returns {{ leftLift: number, rightLift: number, leftShift: number, rightShift: number, bodyBob: number, lean: number }}
+ */
+export function lungePose(phase) {
+  const s = Math.sin(phase);
+  const c = Math.cos(phase);
+  return {
+    leftLift: LUNGE.LIFT * Math.max(0, s),
+    rightLift: LUNGE.LIFT * Math.max(0, -s),
+    leftShift: LUNGE.SHIFT * c,
+    rightShift: -LUNGE.SHIFT * c,
+    bodyBob: -(LUNGE.CROUCH + LUNGE.CROUCH_BOB * Math.abs(s)),
+    lean: LUNGE.LEAN + LUNGE.LEAN_SWING * s,
+  };
 }
 
 /**

@@ -6,8 +6,10 @@ import {
   FRAME_PX,
   FLIP_SLOPE,
   FLIP_HYSTERESIS_MS,
+  LUNGE,
   advancePhase,
   walkPose,
+  lungePose,
   mergeFootRects,
   bodyClipPolygon,
   footInset,
@@ -158,5 +160,30 @@ describe('walk-logic: shouldFlip', () => {
     assert.equal(shouldFlip(-10, 0, 1, 1000, 1000 + 299), 1);
     assert.equal(shouldFlip(-10, 0, 1, 1000, 1000 + 300), -1);
     assert.equal(shouldFlip(10, 0, -1, 2000, 2000 + 1000), 1);
+  });
+});
+
+describe('walk-logic: lungePose (menerkam)', () => {
+  it('konstanta lunge', () => {
+    assert.deepEqual(LUNGE, { LEAN: 14, LEAN_SWING: 4, CROUCH: 7, CROUCH_BOB: 2, LIFT: 10, SHIFT: 6 });
+  });
+  it('selalu condong ke depan (10-18 derajat)', () => {
+    for (let i = 0; i < 64; i++) {
+      const p = lungePose((i / 64) * Math.PI * 2);
+      assert.ok(p.lean >= 10 && p.lean <= 18, `lean ${p.lean}`);
+    }
+  });
+  it('badan jongkok (bodyBob negatif), kaki mengayuh bergantian', () => {
+    for (let i = 0; i < 64; i++) {
+      const p = lungePose((i / 64) * Math.PI * 2);
+      assert.ok(p.bodyBob < 0, `harus jongkok: ${p.bodyBob}`);
+      assert.ok(p.leftLift >= 0 && p.rightLift >= 0);
+      assert.equal(Math.min(p.leftLift, p.rightLift), 0);
+    }
+    const l = lungePose(Math.PI / 2);
+    assert.equal(l.leftLift, 10);
+    assert.equal(l.rightLift, 0);
+    assert.ok(Math.abs(l.leftShift) < 1e-12);
+    assert.equal(lungePose(0).leftShift, 6);
   });
 });

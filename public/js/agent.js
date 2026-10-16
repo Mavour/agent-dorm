@@ -10,7 +10,7 @@ import { walkBand, blockedRect, isFree, planPath } from './path-logic.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
 import { resolveActivities, resolveFeet, idlePauseMs, walkTargetAllowed } from './activity-logic.js';
-import { advancePhase, walkPose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, shouldFlip } from './walk-logic.js';
+import { advancePhase, walkPose, lungePose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, shouldFlip } from './walk-logic.js';
 import { createWalkRig } from './walk-rig.js';
 
 const SPEED = 35; // px stage per detik
@@ -586,7 +586,8 @@ export function createAgent(opts) {
         S.amp = Math.min(1, S.amp + dt / AMP_RAMP);
         rigApi.show();
         img.style.visibility = 'hidden';
-        rigApi.apply(S.dir, walkPose(S.phase, S.amp, lift));
+        // Duel: pose menerkam (condong + jongkok), bukan jalan santai.
+        rigApi.apply(S.dir, S.state === 'duelWalk' ? lungePose(S.phase) : walkPose(S.phase, S.amp, lift));
       } else if (S.state === 'idle' && S.amp > 0) {
         S.amp = Math.max(0, S.amp - dt / AMP_RAMP);
         if (S.amp <= 0) {
