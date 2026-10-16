@@ -198,6 +198,16 @@ export function createAgent(opts) {
     act.noteWalk();
   }
 
+  /** Jalan duel terproteksi (tak bisa disela idle/alert/busy). */
+  function startDuelWalk(to) {
+    const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
+    S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
+    S.target = dest;
+    S.prevTarget = dest;
+    S.state = 'duelWalk';
+    act.noteWalk();
+  }
+
   function statusOf() {
     const s = store.get(id);
     return s ? s.status : 'offline';
@@ -254,6 +264,10 @@ export function createAgent(opts) {
   function onCue(cue) {
     act.st.cueSeq += 1;
     act.st.cueUntil = performance.now() + (cue.durationMs || 6500);
+    // Saat duel (jalan/activity duel): catat cue untuk deteksi abort,
+    // tapi jangan rebut state/activity (manajer duel yang akan abort bersih).
+    const inDuel = S.state === 'duelWalk' || (act.st.cur && act.st.cur.kind === 'duel');
+    if (inDuel) return;
     reactToCue(
       { S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED, isActive: () => !!act.st.cur },
       cue,
@@ -298,10 +312,45 @@ export function createAgent(opts) {
     return act.st.cueSeq;
   }
 
-  /** Jalan duel ke titik eksplisit (lewat waypoint anti-bos). */
+  /** Jalan duel ke titik eksplisit (lewat waypoint anti-bos, terproteksi). */
   function duelTo(x, y) {
     act.st.duelHold = true;
-    startWalk({ x, y });
+    // Hentikan aktivitas idle yang sedang main agar bisa berduel.
+    if (S.state === 'activity' && act.st.cur && act.st.cur.kind === 'idle') act.stop();
+    startDuelWalk({ x, y });
+  }
+
+  /** Lepas dari duel (bersih, tak ada state macet). */
+  function releaseDuel() {
+    act.stop();
+    act.st.duelHold = false;
+    S.path = [];
+    S.target = null;
+    if (S.state === 'duelWalk' || S.state === 'activity') {
+      S.state = 'idle';
+      S.idleUntil = performance.now() + idlePauseMs();
+    }
+  }
+
+  /** Sembunyikan visual alert selama duel (unacked tetap diingat). */
+  function suspendAlert() {
+    hideIcon();
+    hideBadge();
+  }
+
+  /** Kembalikan visual alert setelah duel (baca ulang snapshot). */
+  function restoreAlert() {
+    react();
+  }
+
+  /** Apakah strip duel siap (frame terpreload)? */
+  function duelReady() {
+    return !!player && player.available('duel');
+  }
+
+  /** Hadapkan agen (untuk duel: saling memandang). */
+  function setFacing(dir) {
+    S.dir = dir < 0 ? -1 : 1;
   }
 
   /** Jeda sosial: hadap arah dir, diam hingga untilMs. @returns {boolean} */
@@ -339,7 +388,7 @@ export function createAgent(opts) {
       S.state = 'idle';
       S.idleUntil = now + idlePauseMs();
       hideIcon();
-    } else if (S.unacked > 0 && S.state !== 'busy') {
+    } else if (S.unacked > 0 && S.state !== 'busy' && S.state !== 'duelWalk') {
       S.state = 'alert';
       if (!REDUCED) {
         if (now >= S.shakeAt) {
@@ -373,6 +422,29 @@ export function createAgent(opts) {
           // state -> activity
         } else {
           startWalk(pickTarget());
+        }
+      }
+    } else if (S.state === 'duelWalk') {
+      // Terproteksi: tak bisa disela idle/alert/busy/activity.
+      // Gerak sama dengan walking (lewat waypoint), tiba -> tunggu manajer.
+      const wp = S.path && S.path.length ? S.path[0] : S.target;
+      if (wp) {
+        const dx = wp.x - S.x;
+        const dy = wp.y - S.y;
+        const dist = Math.hypot(dx, dy);
+        const step = SPEED * dt;
+        if (dist <= step) {
+          S.phase = advancePhase(S.phase, dist, STRIDE);
+          S.x = wp.x;
+          S.y = Math.max(wp.y, band.yMin);
+          if (S.path && S.path.length) S.path.shift();
+          if (S.path && S.path.length) S.dir = S.path[0].x - S.x < 0 ? -1 : 1;
+        } else {
+          S.phase = advancePhase(S.phase, step, STRIDE);
+          S.x += (dx / dist) * step;
+          S.y += (dy / dist) * step;
+          if (S.y < band.yMin) S.y = band.yMin;
+          S.dir = dx < 0 ? -1 : 1;
         }
       }
     } else if (S.state === 'walking' && (S.target || (S.path && S.path.length))) {
@@ -411,7 +483,7 @@ export function createAgent(opts) {
     // aktivitas/alert/sibuk/offline menyembunyikannya langsung.
     if (rigApi) {
       const lift = { lift: WALK_LIFT[id] ?? 7 };
-      if (S.state === 'walking') {
+      if (S.state === 'walking' || S.state === 'duelWalk') {
         S.amp = Math.min(1, S.amp + dt / AMP_RAMP);
         rigApi.show();
         img.style.visibility = 'hidden';
@@ -435,7 +507,7 @@ export function createAgent(opts) {
     layer.tick(now, S.state === 'alert' || offline);
 
     // Kelas hop CSS hanya cadangan untuk agen tanpa rig (rig tak butuh hop).
-    el.classList.toggle('walking', S.state === 'walking' && !REDUCED && !rigApi);
+    el.classList.toggle('walking', (S.state === 'walking' || S.state === 'duelWalk') && !REDUCED && !rigApi);
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
     el.style.zIndex = String(Math.round(S.y));
     // Saat aktivitas main, player yang mengatur transform (flip bisa beda arah).
@@ -479,6 +551,11 @@ export function createAgent(opts) {
     activityInfo,
     cueSeq,
     duelTo,
+    releaseDuel,
+    suspendAlert,
+    restoreAlert,
+    duelReady,
+    setFacing,
     socialHold,
     anchor,
     topOffset: h,

@@ -92,7 +92,8 @@ async function main() {
   connectSocket(store, hud);
   setupDemo(agents, manifest, activities);
   window.__PATH_DEBUG__ = { walkBand, blockedRect };
-  setupDebug(agents, stage);
+  window.__ACTIVITIES__ = activities;
+  setupDebug(agents, stage, activities);
 
   // Loop animasi (jeda saat tab hidden)
   let last = performance.now();
@@ -115,7 +116,7 @@ async function main() {
       window.__FPS__ = Math.round((frames * 1000) / (now - fpsAt));
       frames = 0;
       fpsAt = now;
-      paintDebug(agents);
+      paintDebug(agents, activities);
     }
   }
   requestAnimationFrame(loop);
@@ -179,8 +180,14 @@ function setupDemo(agents, manifest, activities) {
       }
     }
     panel.appendChild(actButton('Adu pedang ExitBot vs LP Watcher', () => {
-      if (activities.tryStart()) return { ok: true };
-      return { ok: false, reason: 'Keduanya harus bebas' };
+      const fn = typeof activities.forceStart === 'function' ? () => activities.forceStart() : () => {
+        if (activities.tryStart()) return { ok: true };
+        return { ok: false, reason: 'Keduanya harus bebas' };
+      };
+      const r = fn();
+      if (r.ok) return r;
+      const reasons = r.reasons || (r.reason ? [r.reason] : []);
+      return { ok: false, reason: reasons.join(', ').slice(0, 80) || 'Terhalang' };
     }));
     root.appendChild(panel);
   }
@@ -225,15 +232,15 @@ function setupDemo(agents, manifest, activities) {
   });
 }
 
-/** @param {any[]} agents */
-function setupDebug(agents, stage) {
+/** @param {any[]} agents @param {any} stage @param {any} activities */
+function setupDebug(agents, stage, activities) {
   if (!DEBUG) return;
   const el = document.getElementById('debug');
   el.hidden = false;
   // Tampilkan kotak area klik tiap karakter.
   document.body.classList.add('show-hit');
   window.__FPS__ = 0;
-  window.__paintDebug = () => paintDebug(agents);
+  window.__paintDebug = () => paintDebug(agents, activities);
   // Gambar zona eksklusi bos + tepi walk band di atas stage.
   try {
     if (stage) {
@@ -257,14 +264,24 @@ function setupDebug(agents, stage) {
   }
 }
 
-/** @param {any[]} agents */
-function paintDebug(agents) {
+/** @param {any[]} agents @param {any} activities */
+function paintDebug(agents, activities) {
   const el = document.getElementById('debug');
   if (!el) return;
   const lines = [`FPS ${window.__FPS__ || 0}`];
   const dir = window.__DIRECTOR__;
   if (dir) lines.push(`cue ${dir.type || '-'} oleh ${dir.agentId || '-'} (antre ${dir.queueLength ?? 0})`);
   else lines.push('cue - (antre 0)');
+  try {
+    const di = activities && typeof activities.info === 'function' ? activities.info() : null;
+    if (di) {
+      const nb = di.nextAt ? new Date(di.nextAt).toISOString().slice(11, 19) : '-';
+      const bl = (di.blockers && di.blockers.length ? di.blockers.join('; ') : '-');
+      lines.push(`duel ${di.phase} next:${nb} block:[${bl}]`);
+    }
+  } catch {
+    /* abaikan */
+  }
   for (const a of agents) {
     const d = a.debug();
     let line = `${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`;

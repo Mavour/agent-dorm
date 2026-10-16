@@ -360,3 +360,115 @@ export function pickSocialPair(snaps, now, rng) {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Duel "adu pedang": blockers + scheduler murni. Semua bisa diuji node:test.
+// ---------------------------------------------------------------------------
+
+/** Alert tak diakui hanya menghalangi 30 dtk pertama (lalu duel boleh jalan). */
+export const DUEL_ALERT_GRACE_MS = 30000;
+/** Beri kesempatan scheduler 60 dtk setelah timer menyala. */
+export const DUEL_PENDING_MS = 60000;
+/** Timeout pendekatan duel 25 dtk -> abort + cooldown retry 20 dtk. */
+export const DUEL_APPROACH_MS = 25000;
+export const DUEL_RETRY_MS = 20000;
+/** Interval duel otomatis 70-150 dtk. */
+export const DUEL_EVERY_MS = [70000, 150000];
+
+/**
+ * Daftar alasan manusiawi mengapa duel tak bisa mulai sekarang.
+ * Hard blockers: offline, cue tampil, popup terbuka, reduced-motion,
+ * frame duel hilang. Alert hanya 30 dtk pertama (kecuali force).
+ * Cooldown (nextAt) hanya bila !force. State walking/activity/busy
+ * TIDAK menghalangi (akan dihentikan + dilepas oleh pemanggil).
+ * @param {{
+ *   a: { status: string, unacked: number, alertAt?: number, cueUntil?: number },
+ *   b: { status: string, unacked: number, alertAt?: number, cueUntil?: number },
+ *   now: number, popupA: boolean, popupB: boolean, reduced: boolean,
+ *   framesA: boolean, framesB: boolean, nextAt?: number, force?: boolean
+ * }} p
+ * @returns {string[]}
+ */
+export function duelBlockers(p) {
+  const out = [];
+  if (p.reduced) out.push('reduced-motion');
+  if (!p.framesA) out.push('exitbot: missing duel frames');
+  if (!p.framesB) out.push('lpwatcher: missing duel frames');
+  if (p.a && p.a.status === 'offline') out.push('exitbot: offline');
+  if (p.b && p.b.status === 'offline') out.push('lpwatcher: offline');
+  if (p.a && p.now < (p.a.cueUntil || 0)) out.push('exitbot: cue playing');
+  if (p.b && p.now < (p.b.cueUntil || 0)) out.push('lpwatcher: cue playing');
+  if (p.popupA) out.push('exitbot: popup open');
+  if (p.popupB) out.push('lpwatcher: popup open');
+  const force = !!p.force;
+  if (!force) {
+    if (p.a && (p.a.unacked || 0) > 0) {
+      const age = p.now - (p.a.alertAt ?? p.now);
+      if (age < DUEL_ALERT_GRACE_MS) out.push('exitbot: alert (grace)');
+    }
+    if (p.b && (p.b.unacked || 0) > 0) {
+      const age = p.now - (p.b.alertAt ?? p.now);
+      if (age < DUEL_ALERT_GRACE_MS) out.push('lpwatcher: alert (grace)');
+    }
+    if (typeof p.nextAt === 'number' && p.now < p.nextAt) {
+      out.push(`cooldown ${Math.ceil((p.nextAt - p.now) / 1000)}s`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Scheduler duel murni: flag PENDING + give-up 60 dtk + reschedule.
+ * @param {{ every?: [number, number], now?: number, rng?: () => number }} [opts]
+ */
+export function createDuelScheduler(opts = {}) {
+  const every = opts.every || DUEL_EVERY_MS;
+  const rng = opts.rng || Math.random;
+  const s = {
+    nextAt: (opts.now ?? 0) + every[0] + rng() * (every[1] - every[0]),
+    pending: false,
+    pendingSince: 0,
+    lastDuelEnd: opts.now ?? 0,
+  };
+  function planNext(now) {
+    s.nextAt = now + every[0] + rng() * (every[1] - every[0]);
+    s.pending = false;
+    s.pendingSince = 0;
+  }
+  /**
+   * @param {number} now
+   * @param {string[]} blocked daftar dari duelBlockers (kosong = bebas)
+   * @returns {'wait'|'pending'|'start'|'giveup'}
+   */
+  function tick(now, blocked) {
+    const free = !blocked || !blocked.length;
+    if (!s.pending) {
+      if (now >= s.nextAt) {
+        s.pending = true;
+        s.pendingSince = now;
+        return free ? 'start' : 'pending';
+      }
+      return 'wait';
+    }
+    if (free) return 'start';
+    if (now - s.pendingSince >= DUEL_PENDING_MS) {
+      planNext(now);
+      return 'giveup';
+    }
+    return 'pending';
+  }
+  function notifyStart() {
+    s.pending = false;
+    s.pendingSince = 0;
+  }
+  function notifyEnd(now) {
+    s.lastDuelEnd = now;
+    planNext(now);
+  }
+  function retryIn(now, ms) {
+    s.nextAt = now + ms;
+    s.pending = false;
+    s.pendingSince = 0;
+  }
+  return { state: s, tick, planNext, notifyStart, notifyEnd, retryIn };
+}

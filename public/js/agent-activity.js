@@ -105,6 +105,16 @@ export function createActivityDriver(opts) {
    * @returns {boolean} true bila state ini tertangani
    */
   function tickActivity(now, S) {
+    // Duel terproteksi: alert baru tak menyela (dipulihkan setelah duel).
+    if (st.cur && st.cur.kind === 'duel') {
+      if (now >= st.endsAt) {
+        finish(now);
+        S.state = 'idle';
+        S.idleUntil = now + idlePauseMs();
+        return true;
+      }
+      return true;
+    }
     if (S.unacked > st.unackedAtStart) {
       stop();
       S.state = 'idle';
