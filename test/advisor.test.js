@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { advise, answer, dailyReport, QUESTIONS } from '../server/services/advisor/rules-advisor.js';
 import { getAdvisor } from '../server/services/advisor/index.js';
 
-function snap(todayExpense, avg7Expense, monthSpent = 100, tone = {}) {
+function snap(todayExpense, avg7Expense, monthSpent = 100) {
   return {
     metrics: {
       netWorthUsd: 12480,

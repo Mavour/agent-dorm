@@ -9,19 +9,13 @@ import {
   SOCIAL_MS,
   duelBlockers,
   createDuelScheduler,
-  DUEL_ALERT_GRACE_MS,
-  DUEL_PENDING_MS,
   DUEL_APPROACH_MS,
   DUEL_RETRY_MS,
-  DUEL_EVERY_MS,
 } from './activity-logic.js';
 
 export const DUEL_GAP = 140;
 export const DUEL_ARRIVE_PX = 4;
 const DUEL_PLAY_MS = [8000, 12000];
-
-void DUEL_ALERT_GRACE_MS;
-void DUEL_PENDING_MS;
 
 /**
  * @param {{ agents: any[], stage: any, manifest: any, isPopupOpen: (id: string) => boolean, reduced: boolean }} opts

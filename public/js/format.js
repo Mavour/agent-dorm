@@ -36,13 +36,11 @@ export function num(n) {
   return new Intl.NumberFormat('en-US').format(n);
 }
 
-/** @param {string} iso -> HH:MM:SS lokal */
+/** @param {string} iso -> HH:MM:SS lokal ('--:--:--' bila tak valid) */
 export function clockOf(iso) {
-  try {
-    return new Date(iso).toLocaleTimeString('id-ID', { hour12: false });
-  } catch {
-    return '--:--:--';
-  }
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '--:--:--';
+  return new Date(t).toLocaleTimeString('id-ID', { hour12: false });
 }
 
 /** @param {string} iso -> waktu relatif Indonesia */

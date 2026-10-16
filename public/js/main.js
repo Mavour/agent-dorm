@@ -264,6 +264,15 @@ function setupDebug(agents, stage, activities) {
   }
 }
 
+/** Hitung mundur duel berikut (nextAt basis performance.now, bukan epoch). */
+function duelCountdown(di) {
+  if (di.phase === 'pending') return 'pending';
+  if (typeof di.nextAt !== 'number') return 'next:-';
+  const s = Math.max(0, Math.round((di.nextAt - performance.now()) / 1000));
+  if (s <= 0) return 'next:now';
+  return s < 60 ? `next:${s}s` : `next:${Math.floor(s / 60)}m ${s % 60}s`;
+}
+
 /** @param {any[]} agents @param {any} activities */
 function paintDebug(agents, activities) {
   const el = document.getElementById('debug');
@@ -275,9 +284,7 @@ function paintDebug(agents, activities) {
   try {
     const di = activities && typeof activities.info === 'function' ? activities.info() : null;
     if (di) {
-      const nb = di.nextAt ? new Date(di.nextAt).toISOString().slice(11, 19) : '-';
-      const bl = (di.blockers && di.blockers.length ? di.blockers.join('; ') : '-');
-      lines.push(`duel ${di.phase} next:${nb} block:[${bl}]`);
+      lines.push(`duel ${di.phase} ${duelCountdown(di)} block:[${di.blockers && di.blockers.length ? di.blockers.join('; ') : '-'}]`);
     }
   } catch {
     /* abaikan */

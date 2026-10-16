@@ -51,16 +51,33 @@ export function registerRoutes(app, { config, store, boss }) {
 
   app.post('/api/demo/trigger', async (req, reply) => {
     if (!config.demoControls) return reply.code(404).send({ error: 'Demo controls nonaktif' });
-    const { hasAnyDummy } = await import('./adapters/index.js');
-    const { triggerDemo } = await import('./adapters/dummy/engine.js');
-    if (!hasAnyDummy(config)) return reply.code(404).send({ error: 'Tidak ada agen dummy' });
     const { action } = req.body || {};
     const valid = ['new_coin', 'lp_out', 'close_profit', 'close_loss', 'bot_offline', 'daily_report', 'big_expense'];
     if (!valid.includes(action)) return reply.code(400).send({ error: 'action tidak dikenal' });
+    if (demoThrottled(req.ip, action)) return reply.code(429).send({ error: 'Terlalu sering, coba lagi sebentar' });
+    const { hasAnyDummy } = await import('./adapters/index.js');
+    const { triggerDemo } = await import('./adapters/dummy/engine.js');
+    if (!hasAnyDummy(config)) return reply.code(404).send({ error: 'Tidak ada agen dummy' });
     const r = triggerDemo(action);
     if (!r.handled) return reply.code(400).send({ error: 'Aksi tidak ditangani agen dummy mana pun' });
     return { ok: true, action };
   });
+}
+
+/**
+ * Throttle demo: maks 1 aksi sama per IP per detik (anti spam ganda).
+ * @param {string} ip
+ * @param {string} action
+ */
+const demoHits = new Map();
+const DEMO_MIN_MS = 1000;
+export function demoThrottled(ip, action) {
+  if (demoHits.size > 500) demoHits.clear();
+  const key = `${ip || '?'}:${action}`;
+  const now = Date.now();
+  if (now - (demoHits.get(key) || 0) < DEMO_MIN_MS) return true;
+  demoHits.set(key, now);
+  return false;
 }
 
 /**

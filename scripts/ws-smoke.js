@@ -19,7 +19,9 @@ async function main() {
     const hardTimeout = setTimeout(() => {
       try {
         ws.close();
-      } catch {}
+      } catch {
+        /* soket sudah mati */
+      }
       reject(new Error(`timeout (snapshot_all=${gotAll} agent_update=${gotUpdate} coin_found=${gotCoin})`));
     }, 25000);
     ws.onopen = () => console.log('[smoke] ws terbuka.');
@@ -49,7 +51,9 @@ async function main() {
         clearTimeout(hardTimeout);
         try {
           ws.close();
-        } catch {}
+        } catch {
+          /* soket sudah mati */
+        }
         console.log('[smoke] SMOKE LULUS.');
         resolve();
       }

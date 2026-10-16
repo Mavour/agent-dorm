@@ -186,14 +186,10 @@ export function duelEligible(p) {
  * @param {{ x: number, y: number }} seat kursi bos (px stage)
  * @param {number} gap jarak kedua agen
  * @param {() => number} rng
- * @param {number} W lebar stage
- * @param {number} H tinggi stage
  */
-export function duelTargets(area, seat, gap, rng, W, H) {
-  void W;
-  void H;
-  // Impor dinamis dihindari agar murni; logika band/rect di-inline
-  // konsisten dengan path-logic.js (yMin = seat.y+28, rect 170/60).
+export function duelTargets(area, seat, gap, rng) {
+  // Logika band/rect di-inline konsisten dengan path-logic.js
+  // (yMin = seat.y+28, rect 170/60).
   const band = { xMin: area.xMin, xMax: area.xMax, yMin: seat.y + 28, yMax: area.yMax };
   const rect = { x0: seat.x - 170, x1: seat.x + 170, y0: 0, y1: seat.y + 60 };
   const m = 14;

@@ -1,7 +1,7 @@
 /**
  * Dummy Bot Alert: kandidat koin fiktif + scan berkala.
  */
-import { mulberry32, pick, range, nowIso, eventId, registerDemoHandler, unregisterDemoHandler } from './engine.js';
+import { mulberry32, pick, nowIso, eventId, registerDemoHandler, unregisterDemoHandler } from './engine.js';
 
 const POOL = ['NEKOZ', 'RONIN9', 'KATANA', 'SHOGUN', 'MOCHI', 'TANUKI', 'SAKURA', 'ONIGIRI', 'DOJO', 'KABUTO', 'SUMO', 'TOFU'];
 const BASES = ['USDC', 'SOL'];

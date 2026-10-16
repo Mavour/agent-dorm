@@ -9,6 +9,7 @@ export function connectSocket(store, hud) {
   let alive = true;
   let fallbackTimer = null;
   let ws = null;
+  let lastWsMsgAt = 0; // Date.now() pesan WS terakhir (filter fallback basi)
 
   function setConn(state) {
     if (hud && hud.setConn) hud.setConn(state);
@@ -17,10 +18,14 @@ export function connectSocket(store, hud) {
   function startFallback() {
     stopFallback();
     fallbackTimer = setInterval(async () => {
+      const startedAt = Date.now();
       try {
         const r = await fetch('/api/state');
         if (!r.ok) return;
+        // WS sudah mengirim data lebih segar selagi fetch jalan: abaikan.
+        if (lastWsMsgAt > startedAt) return;
         const s = await r.json();
+        if (lastWsMsgAt > startedAt) return;
         if (s.agents) store.setAll(s.agents);
         if (s.meta) store.setMeta(s.meta);
         if (s.events) store.setEvents(s.events);
@@ -60,6 +65,7 @@ export function connectSocket(store, hud) {
       } catch {
         return;
       }
+      lastWsMsgAt = Date.now();
       hud.bumpSync();
       if (m.type === 'hello') {
         if (m.meta) store.setMeta(m.meta);

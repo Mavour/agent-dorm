@@ -13,7 +13,7 @@ export function loadDotEnv(path = '.env') {
   /** @type {string[]} */
   const loaded = [];
   if (!existsSync(path)) return loaded;
-  let raw = '';
+  let raw;
   try {
     raw = readFileSync(path, 'utf8');
   } catch {

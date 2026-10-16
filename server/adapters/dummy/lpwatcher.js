@@ -1,7 +1,7 @@
 /**
  * Dummy LP Watcher: 5 posisi LP Solana dengan random-walk harga.
  */
-import { mulberry32, range, nowIso, eventId, registerDemoHandler, unregisterDemoHandler } from './engine.js';
+import { mulberry32, nowIso, eventId, registerDemoHandler, unregisterDemoHandler } from './engine.js';
 
 const SEED_POSITIONS = [
   { id: 'lp-sol', pair: 'SOL/USDC', protocol: 'Orca', rangeLow: 138, rangeHigh: 162, price: 151.2, valueUsd: 4820, fees: 61.2, pnl: 84.5, il: -0.4 },

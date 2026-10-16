@@ -1,9 +1,11 @@
 /**
  * Adapter file: baca JSON dari <file> tiap poll (untuk bot tanpa server HTTP).
+ * Backoff via rantai setTimeout; event offline/online sekali per transisi.
  */
 import { readFile } from 'node:fs/promises';
 import { validateSnapshot } from '../contract.js';
 import { diffSnapshots } from '../services/event-deriver.js';
+import { retryDelay } from './retry.js';
 
 /**
  * @param {string} agentId
@@ -17,8 +19,27 @@ export function createFileAdapter(agentId, opts) {
   let ctx = null;
   let prev = null;
   let fails = 0;
+  let offline = false;
 
-  async function poll() {
+  /** Jeda berikut sesuai gagal beruntun. */
+  function delay() {
+    return fails === 0 ? pollMs : retryDelay(pollMs, fails);
+  }
+
+  /** Jadwalkan poll berikut (rantai, bukan interval). */
+  function schedule(ms) {
+    clearTimeout(timer);
+    timer = setTimeout(tick, ms);
+  }
+
+  async function tick() {
+    const c = ctx;
+    if (!c) return;
+    await poll(c);
+    if (ctx) schedule(delay());
+  }
+
+  async function poll(c) {
     if (!opts.file) return;
     try {
       const raw = await readFile(opts.file, 'utf8');
@@ -34,13 +55,22 @@ export function createFileAdapter(agentId, opts) {
       }
       const evs = diffSnapshots(agentId, prev, snap);
       prev = snap;
-      ctx.publishSnapshot(agentId, snap);
-      for (const e of evs) ctx.publishEvent(e);
+      c.publishSnapshot(agentId, snap);
+      for (const e of evs) c.publishEvent(e);
+      if (offline) {
+        offline = false;
+        c.publishEvent({ id: `on-${agentId}-${Date.now()}`, ts: new Date().toISOString(), type: 'agent_online', level: 'info', message: 'Aku kembali!', agentId, data: {} });
+      }
     } catch (err) {
       fails += 1;
-      ctx.log(`[${agentId}] baca file gagal (${fails}x): ${err && err.message ? err.message : err}`);
-      if (fails >= 3) {
-        ctx.publishEvent({ id: `off-${agentId}-${Date.now()}`, ts: new Date().toISOString(), type: 'agent_offline', level: 'warn', message: 'Zzz... aku terputus.', agentId, data: {} });
+      c.log(`[${agentId}] baca file gagal (${fails}x): ${err && err.message ? err.message : err}`);
+      if (fails >= 3 && !offline) {
+        offline = true;
+        if (prev) {
+          const off = { ...prev, status: 'offline', headline: 'Terputus', updatedAt: new Date().toISOString() };
+          c.publishSnapshot(agentId, off);
+        }
+        c.publishEvent({ id: `off-${agentId}-${Date.now()}`, ts: new Date().toISOString(), type: 'agent_offline', level: 'warn', message: 'Zzz... aku terputus.', agentId, data: {} });
       }
     }
   }
@@ -64,11 +94,12 @@ export function createFileAdapter(agentId, opts) {
         });
         return;
       }
-      poll();
-      timer = setInterval(poll, pollMs);
+      tick();
     },
     stop() {
-      if (timer) clearInterval(timer);
+      ctx = null;
+      if (timer) clearTimeout(timer);
+      timer = null;
     },
   };
 }
