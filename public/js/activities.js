@@ -12,6 +12,7 @@ import {
   DUEL_APPROACH_MS,
   DUEL_RETRY_MS,
 } from './activity-logic.js';
+import { dashWhoosh, swordClash, duelMode } from './sound.js';
 
 export const DUEL_GAP = 140;
 export const DUEL_ARRIVE_PX = 4;
@@ -108,6 +109,7 @@ export function createActivities(opts) {
   }
 
   function releasePair(a, b) {
+    duelMode(false);
     for (const ag of [a, b]) {
       try {
         if (typeof ag.releaseDuel === 'function') ag.releaseDuel();
@@ -181,6 +183,8 @@ export function createActivities(opts) {
     };
     sched.notifyStart();
     console.info(`[duel] mulai! (${force ? 'paksa' : 'otomatis'})`);
+    dashWhoosh();
+    duelMode(true);
     return { ok: true };
   }
 
@@ -288,6 +292,11 @@ export function createActivities(opts) {
         if (da.status === 'offline' || db.status === 'offline') abort();
         else abort(DUEL_RETRY_MS);
         return;
+      }
+      // Debing pedang berkala selama tarung.
+      if (!duel.lastClash || now - duel.lastClash > 650 + Math.random() * 700) {
+        duel.lastClash = now;
+        swordClash();
       }
       if (now >= duel.endsAt) {
         releasePair(a, b);

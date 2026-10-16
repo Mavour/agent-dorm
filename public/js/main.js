@@ -13,6 +13,7 @@ import { createPopup } from './popup.js';
 import { createActivities } from './activities.js';
 import { resolveActivities } from './activity-logic.js';
 import { walkBand, blockedRect } from './path-logic.js';
+import { unlock, setMuted, isMuted } from './sound.js';
 
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -92,6 +93,7 @@ async function main() {
   connectSocket(store, hud);
   setupDemo(agents, manifest, activities);
   setupDuelFun(activities);
+  setupSound();
   window.__PATH_DEBUG__ = { walkBand, blockedRect };
   window.__ACTIVITIES__ = activities;
   setupDebug(agents, stage, activities);
@@ -280,6 +282,37 @@ function setupDuelFun(activities) {
     setTimeout(() => forceDuel('?duel=1'), 2500);
   }
   if (hint) hint.textContent = (origHint ? origHint + ' ' : '') + '· tekan F untuk duel';
+}
+
+/** Tombol + shortcut suara: M on/off, musik mulai setelah interaksi pertama. */
+function setupSound() {
+  const demoBtn = document.getElementById('demo-btn');
+  const btn = document.createElement('button');
+  btn.id = 'sound-btn';
+  btn.className = 'demo-btn';
+  btn.title = 'Suara on/off (M)';
+  const sync = () => {
+    btn.textContent = isMuted() ? '🔇' : '🔊';
+  };
+  sync();
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    unlock();
+    setMuted(!isMuted());
+    sync();
+  });
+  if (demoBtn && demoBtn.parentNode) demoBtn.parentNode.insertBefore(btn, demoBtn);
+  document.addEventListener('pointerdown', () => unlock(), { once: true });
+  document.addEventListener('keydown', () => unlock(), { once: true });
+  document.addEventListener('keydown', (e) => {
+    if ((e.key === 'm' || e.key === 'M') && document.activeElement && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+      unlock();
+      setMuted(!isMuted());
+      sync();
+    }
+  });
+  const hint = document.getElementById('hint');
+  if (hint) hint.textContent += ' · M suara';
 }
 
 /** @param {any[]} agents @param {any} stage @param {any} activities */

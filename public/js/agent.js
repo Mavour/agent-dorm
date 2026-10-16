@@ -14,6 +14,8 @@ import { advancePhase, walkPose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, 
 import { createWalkRig } from './walk-rig.js';
 
 const SPEED = 35; // px stage per detik
+/** Pengali lari duel (dash secepat kilat ke titik temu). */
+export const DUEL_DASH = 6;
 const STATUS_COLOR = { ok: '#4ade80', warn: '#fbbf24', error: '#f87171', offline: '#9ca3af' };
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Skala render ikon (relatif ukuran manifest; ubah di sini untuk mengatur besarnya).
@@ -134,6 +136,7 @@ export function createAgent(opts) {
     unacked: 0, // jumlah warn/critical belum diakui
     acked: new Set(), // id alert yang sudah diakui via popup
     dir: 1,
+    speedMul: 1, // pengali kecepatan (DUEL_DASH saat duelWalk)
     lastFlipAt: 0, // timestamp flip hadap terakhir (histeresis 0,3 dtk)
     walkedPx: 0, // jarak tempuh kumulatif sesi jalan (frame jalan dari jarak)
     walkIndex: 0, // indeks frame "jalan" berjalan
@@ -269,6 +272,7 @@ export function createAgent(opts) {
   /** Jalan duel terproteksi (tak bisa disela idle/alert/busy). */
   function startDuelWalk(to) {
     endWalkDisplay();
+    S.speedMul = DUEL_DASH;
     const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
     S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
     S.target = dest;
@@ -400,6 +404,7 @@ export function createAgent(opts) {
   /** Lepas dari duel (bersih, tak ada state macet). */
   function releaseDuel() {
     endWalkDisplay();
+    S.speedMul = 1;
     act.stop();
     act.st.duelHold = false;
     S.path = [];
@@ -514,7 +519,7 @@ export function createAgent(opts) {
         const dx = wp.x - S.x;
         const dy = wp.y - S.y;
         const dist = Math.hypot(dx, dy);
-        const step = SPEED * dt;
+        const step = SPEED * S.speedMul * dt;
         if (dist <= step) {
           S.phase = advancePhase(S.phase, dist, STRIDE);
           S.x = wp.x;
@@ -672,6 +677,7 @@ export function createAgent(opts) {
         amp: Math.round(S.amp * 100) / 100,
         socialUntil: S.socialUntil,
         dir: S.dir,
+        dash: S.speedMul,
         walk: walking ? S.walkSrc || walkCap() : walkCap(),
         walkIndex: S.walkIndex,
         walkedPx: Math.round(S.walkedPx * 100) / 100,

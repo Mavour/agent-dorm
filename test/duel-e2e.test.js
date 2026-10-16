@@ -97,7 +97,7 @@ globalThis.Image = class {
   }
 };
 
-const { createAgent } = await import('../public/js/agent.js');
+const { createAgent, DUEL_DASH } = await import('../public/js/agent.js');
 const { createActivities } = await import('../public/js/activities.js');
 
 const flush = () => new Promise((r) => setTimeout(r, 10));
@@ -177,5 +177,26 @@ describe('duel e2e: paksa mulai sampai tarung selesai', () => {
       const d = ag.debug();
       assert.ok(d.state === 'idle' || d.state === 'walking', `${ag.id} macet di ${d.state}`);
     }
+  });
+});
+
+describe('duel e2e: dash secepat kilat lalu normal lagi', () => {
+  it('duelWalk 6x lipat, releaseDuel mengembalikan 1x', async () => {
+    assert.equal(DUEL_DASH, 6);
+    const { agents } = makeWorld();
+    await flush();
+    const [a] = agents;
+    const p0 = a.debug();
+    a.duelTo(1200, 690);
+    assert.equal(a.debug().dash, DUEL_DASH);
+    a.frame(performance.now(), 0.05);
+    const p1 = a.debug();
+    assert.equal(p1.state, 'duelWalk');
+    const moved = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    // debug() membulatkan koordinat (±1px); yang penting jauh di atas jalan normal (1,75px).
+    assert.ok(Math.abs(moved - 35 * DUEL_DASH * 0.05) <= 1, `gerak ${moved}, harusnya ~${35 * DUEL_DASH * 0.05}`);
+    assert.ok(moved > 35 * 0.05 + 1, 'dash harus jauh lebih cepat dari jalan biasa');
+    a.releaseDuel();
+    assert.equal(a.debug().dash, 1);
   });
 });
