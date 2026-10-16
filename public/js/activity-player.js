@@ -19,6 +19,9 @@ export function createActivityPlayer(opts) {
   let cur = null;
   /** @type {any|null} */
   let baseLook = null;
+  /** Tampilan jalan jarak-basis (terpisah dari cur agar duel/aktivitas utuh). */
+  /** @type {{ name: string, index: number }|null} */
+  let walk = null;
 
   // Preload + decode semua frame saat boot.
   for (const [name, act] of Object.entries(acts)) {
@@ -73,7 +76,7 @@ export function createActivityPlayer(opts) {
   function stop() {
     if (!cur) return;
     cur = null;
-    if (baseLook) {
+    if (baseLook && !walk) {
       img.setAttribute('src', baseLook.src);
       img.style.width = baseLook.width;
       img.style.height = baseLook.height;
@@ -84,6 +87,83 @@ export function createActivityPlayer(opts) {
       img.style.transformOrigin = baseLook.transformOrigin;
       baseLook = null;
     }
+  }
+
+  function saveBase() {
+    baseLook = {
+      src: img.getAttribute('src'),
+      width: img.style.width,
+      height: img.style.height,
+      left: img.style.left,
+      top: img.style.top,
+      transform: img.style.transform,
+      transformOrigin: img.style.transformOrigin,
+      bottom: img.style.bottom,
+    };
+  }
+
+  function restoreBase() {
+    if (!baseLook) return;
+    img.setAttribute('src', baseLook.src);
+    img.style.width = baseLook.width;
+    img.style.height = baseLook.height;
+    img.style.left = baseLook.left;
+    img.style.top = baseLook.top;
+    img.style.bottom = baseLook.bottom;
+    img.style.transform = baseLook.transform;
+    img.style.transformOrigin = baseLook.transformOrigin;
+    baseLook = null;
+  }
+
+  /**
+   * Tampilkan satu frame jalan (dipilih dari JARAK, bukan waktu).
+   * Penempatan kaki sama persis dengan aktivitas lain (activityPlacement).
+   * @param {string} name nama aktivitas jalan (biasanya "jalan")
+   * @param {number} index indeks frame
+   * @param {number} dir < 0 menghadap kiri (artwork menghadap kanan)
+   * @returns {boolean} false bila tak tersedia (pemanggil pakai fallback)
+   */
+  function showWalk(name, index, dir) {
+    const act = acts[name];
+    if (!act || !act.frames || !act.frames.length || status[name] !== 'ok') return false;
+    if (cur) return false; // aktivitas (duel/event) menang; jalan mengalah
+    const n = act.frames.length;
+    const i = ((index % n) + n) % n;
+    if (!walk) {
+      saveBase();
+      walk = { name, index: -1 };
+    }
+    const p = activityPlacement(base, act, dir);
+    if (i !== walk.index) {
+      walk.index = i;
+      img.setAttribute('src', '/assets/' + act.frames[i]);
+      img.style.width = act.size[0] + 'px';
+      img.style.height = act.size[1] + 'px';
+      img.style.left = Math.round(p.left) + 'px';
+      img.style.top = Math.round(p.top) + 'px';
+      img.style.bottom = 'auto';
+    }
+    img.style.transformOrigin = `${Math.round(p.originX)}px 50%`;
+    img.style.transform = p.flip ? 'scaleX(-1)' : 'none';
+    return true;
+  }
+
+  /** Akhiri tampilan jalan, kembalikan sprite diam persis. */
+  function hideWalk() {
+    if (!walk) return;
+    walk = null;
+    if (!cur) restoreBase();
+  }
+
+  /** @returns {boolean} */
+  function walkActive() {
+    return !!walk;
+  }
+
+  /** @param {string} name @returns {string} 'ok'|'loading'|'bad'|'missing' */
+  function statusOf(name) {
+    if (!acts[name]) return 'missing';
+    return status[name] || 'loading';
   }
 
   /**
@@ -122,5 +202,5 @@ export function createActivityPlayer(opts) {
     return cur.act.feet ? cur.act.feet[1] : 0;
   }
 
-  return { play, stop, tick, current, topOffset, available };
+  return { play, stop, tick, current, topOffset, available, showWalk, hideWalk, walkActive, statusOf };
 }

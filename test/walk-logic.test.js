@@ -3,11 +3,16 @@ import assert from 'node:assert/strict';
 import {
   STRIDE,
   FOOT_OVERLAP,
+  FRAME_PX,
+  FLIP_SLOPE,
+  FLIP_HYSTERESIS_MS,
   advancePhase,
   walkPose,
   mergeFootRects,
   bodyClipPolygon,
   footInset,
+  frameFromDistance,
+  shouldFlip,
 } from '../public/js/walk-logic.js';
 
 describe('walk-logic: advancePhase', () => {
@@ -107,5 +112,51 @@ describe('walk-logic: clip-path', () => {
     assert.equal(footInset([39.5, 82], rig, 171, 225), 'inset(192.5px 89px 0px 39.5px)');
     assert.equal(footInset([79, 125.5], rig, 171, 225), 'inset(192.5px 45.5px 0px 79px)');
     assert.equal(footInset([10, 30], { bandTop: 100 }, 100, 200, 5), 'inset(95px 70px 0px 10px)');
+  });
+});
+
+describe('walk-logic: frameFromDistance', () => {
+  it('FRAME_PX = 7', () => {
+    assert.equal(FRAME_PX, 7);
+  });
+  it('tak ada perubahan frame selama jarak tak berubah (kaki tak bergeser)', () => {
+    assert.equal(frameFromDistance(14, 4, 7), frameFromDistance(14, 4, 7));
+    assert.equal(frameFromDistance(14, 4, 7), 2);
+    assert.equal(frameFromDistance(14.9, 4, 7), 2);
+    assert.equal(frameFromDistance(0, 4, 7), 0);
+  });
+  it('membungkus dengan benar (modulo jumlah frame)', () => {
+    assert.deepEqual([0, 7, 14, 21, 28, 35].map((d) => frameFromDistance(d, 4, 7)), [0, 1, 2, 3, 0, 1]);
+    assert.equal(frameFromDistance(27.9, 4, 7), 3);
+  });
+  it('n tak valid -> 0', () => {
+    assert.equal(frameFromDistance(100, 0, 7), 0);
+    assert.equal(frameFromDistance(100, -2, 7), 0);
+  });
+});
+
+describe('walk-logic: shouldFlip', () => {
+  it('konstanta ambang', () => {
+    assert.equal(FLIP_SLOPE, 0.35);
+    assert.equal(FLIP_HYSTERESIS_MS, 300);
+  });
+  it('gerak horizontal jelas membalik hadap', () => {
+    assert.equal(shouldFlip(10, 2, 1, 0, 10000), 1);
+    assert.equal(shouldFlip(-10, 2, 1, 0, 10000), -1);
+    assert.equal(shouldFlip(10, 0, -1, 0, 10000), 1);
+  });
+  it('vertikal dominan mempertahankan hadap (|dx| < 0,35*|dy|)', () => {
+    assert.equal(shouldFlip(3, 10, 1, 0, 10000), 1);
+    assert.equal(shouldFlip(-3, 10, 1, 0, 10000), 1);
+    assert.equal(shouldFlip(3, -10, -1, 0, 10000), -1);
+    assert.equal(shouldFlip(0, 50, -1, 0, 10000), -1);
+    // Batas: |dx| = 0,35*|dy| tepat -> boleh balik.
+    assert.equal(shouldFlip(3.5, 10, 1, 0, 10000), 1);
+    assert.equal(shouldFlip(-3.5, 10, 1, 0, 10000), -1);
+  });
+  it('histeresis: maksimal sekali per 0,3 dtk', () => {
+    assert.equal(shouldFlip(-10, 0, 1, 1000, 1000 + 299), 1);
+    assert.equal(shouldFlip(-10, 0, 1, 1000, 1000 + 300), -1);
+    assert.equal(shouldFlip(10, 0, -1, 2000, 2000 + 1000), 1);
   });
 });

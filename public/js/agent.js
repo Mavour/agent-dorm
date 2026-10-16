@@ -10,7 +10,7 @@ import { walkBand, blockedRect, isFree, planPath } from './path-logic.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
 import { resolveActivities, resolveFeet, idlePauseMs, walkTargetAllowed } from './activity-logic.js';
-import { advancePhase, walkPose, STRIDE, AMP_RAMP } from './walk-logic.js';
+import { advancePhase, walkPose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, shouldFlip } from './walk-logic.js';
 import { createWalkRig } from './walk-rig.js';
 
 const SPEED = 35; // px stage per detik
@@ -23,6 +23,8 @@ const ICON_SCALE_OVERRIDE = { alert: 0.7 };
 const ICON_SIDE = { exitbot: 'right', portfolio: 'right', lpwatcher: 'right', alert: 'left' };
 // Angkat kaki maks per agen (px tampil; hakama Karo lebar jadi kecil).
 const WALK_LIFT = { exitbot: 8, portfolio: 5, alert: 7, lpwatcher: 7 };
+// Sumber jalan per agen untuk sekali peringatan ("jalan" vs fallback rig).
+const walkWarned = new Set();
 
 /**
  * @param {object} opts {id, cfg (manifest agent), acts, manifest, store, stage, bubbles, icons, onOpen}
@@ -132,6 +134,10 @@ export function createAgent(opts) {
     unacked: 0, // jumlah warn/critical belum diakui
     acked: new Set(), // id alert yang sudah diakui via popup
     dir: 1,
+    lastFlipAt: 0, // timestamp flip hadap terakhir (histeresis 0,3 dtk)
+    walkedPx: 0, // jarak tempuh kumulatif sesi jalan (frame jalan dari jarak)
+    walkIndex: 0, // indeks frame "jalan" berjalan
+    walkSrc: null, // "jalan" | "fallback" (sumber render jalan)
     phase: 0, // fase langkah (radian, maju sejauh jarak tempuh)
     amp: 0, // amplitudo jalan 0..1 (merambat 0,15 dtk)
     prevTarget: null, // target jalan sebelumnya (min 100 px dari yang baru)
@@ -189,17 +195,80 @@ export function createAgent(opts) {
   }
 
   /** Mulai jalan ke `to` lewat waypoint planPath. */
-  function startWalk(to) {
+  function startWalk(to, now = performance.now()) {
     const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
     S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
     S.target = dest;
     S.prevTarget = dest;
     S.state = 'walking';
+    S.walkedPx = 0;
+    S.walkIndex = 0;
+    S.walkSrc = jalanUsable() ? 'jalan' : 'fallback';
+    if (S.walkSrc === 'fallback' && !REDUCED && player) walkWarnOnce();
+    const wp = S.path && S.path.length ? S.path[0] : dest;
+    faceAtSegmentStart(wp.x - S.x, wp.y - S.y, now);
     act.noteWalk();
+  }
+
+  /** Strip "jalan" siap dipakai (frame terpreload)? */
+  function jalanUsable() {
+    if (REDUCED || !player) return false;
+    const def = acts && acts.jalan;
+    if (!def || !def.frames || !def.frames.length) return false;
+    return player.available('jalan');
+  }
+
+  /** Sumber jalan kapabilitas (untuk debug saat diam). */
+  function walkCap() {
+    const def = acts && acts.jalan;
+    return def && def.frames && def.frames.length ? 'jalan' : 'fallback';
+  }
+
+  /** Peringatan sekali bila strip jalan hilang/gagal (lalu fallback rig). */
+  function walkWarnOnce() {
+    if (walkWarned.has(id)) return;
+    const def = acts && acts.jalan;
+    const hasDef = !!(def && def.frames && def.frames.length);
+    if (hasDef && player && typeof player.statusOf === 'function' && player.statusOf('jalan') === 'loading') {
+      return; // belum selesai preload: diam, coba lagi jalan berikut
+    }
+    walkWarned.add(id);
+    let reason = 'preload failed';
+    if (!hasDef) reason = 'no jalan activity';
+    else if (player && typeof player.statusOf === 'function') reason = `status ${player.statusOf('jalan')}`;
+    console.warn(`[walk] jalan frames missing for ${id}: ${reason}`);
+  }
+
+  /** Hadap di AWAL segmen (vertikal dominan = pertahankan, anti-flip 0,3 dtk). */
+  function faceAtSegmentStart(dx, dy, now) {
+    const nd = shouldFlip(dx, dy, S.dir, S.lastFlipAt, now);
+    if (nd !== S.dir) {
+      S.dir = nd;
+      S.lastFlipAt = now;
+    }
+  }
+
+  /** Akhiri tampilan jalan, kembalikan sprite diam persis. */
+  function endWalkDisplay() {
+    if (player && typeof player.hideWalk === 'function') player.hideWalk();
+  }
+
+  /** Maju satu frame jalan dari jarak (hanya selagi bergerak). */
+  function renderWalkStep() {
+    if (S.walkSrc !== 'jalan' || !player || typeof player.showWalk !== 'function') return;
+    const def = acts && acts.jalan;
+    const n = def && def.frames ? def.frames.length : 0;
+    if (!(n > 0)) {
+      S.walkSrc = 'fallback';
+      return;
+    }
+    S.walkIndex = frameFromDistance(S.walkedPx, n, FRAME_PX);
+    if (!player.showWalk('jalan', S.walkIndex, S.dir)) S.walkSrc = 'fallback';
   }
 
   /** Jalan duel terproteksi (tak bisa disela idle/alert/busy). */
   function startDuelWalk(to) {
+    endWalkDisplay();
     const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
     S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
     S.target = dest;
@@ -268,6 +337,8 @@ export function createAgent(opts) {
     // tapi jangan rebut state/activity (manajer duel yang akan abort bersih).
     const inDuel = S.state === 'duelWalk' || (act.st.cur && act.st.cur.kind === 'duel');
     if (inDuel) return;
+    // Cue untuk agen ini menyela jalan kaki (aktivitas/busy menang).
+    if (cue && cue.event && cue.event.agentId === id) endWalkDisplay();
     reactToCue(
       { S, id, w, h, badge, showIcon, hideIcon, busy, bubbles, REDUCED, isActive: () => !!act.st.cur },
       cue,
@@ -287,6 +358,7 @@ export function createAgent(opts) {
    * @param {'idle'|'event'|'demo'|'duel'} [kind='demo']
    */
   function playActivity(name, durationMs, kind = 'demo') {
+    endWalkDisplay();
     if (!act.play(name, durationMs, kind, S.unacked)) return false;
     S.state = 'activity';
     S.target = null;
@@ -322,6 +394,7 @@ export function createAgent(opts) {
 
   /** Lepas dari duel (bersih, tak ada state macet). */
   function releaseDuel() {
+    endWalkDisplay();
     act.stop();
     act.st.duelHold = false;
     S.path = [];
@@ -364,6 +437,7 @@ export function createAgent(opts) {
 
   /** @param {string} icon @param {number} ms @param {number} now */
   function busy(icon, ms, now) {
+    endWalkDisplay();
     if (!REDUCED) showIcon(icon, ms);
     S.busyUntil = now + ms;
     S.state = 'busy';
@@ -378,6 +452,7 @@ export function createAgent(opts) {
 
     if (offline) {
       S.state = 'offline';
+      endWalkDisplay();
       act.stop();
       if (!REDUCED && !layer.visible()) showIcon('sleep', 60000);
     } else if (S.state === 'activity') {
@@ -389,6 +464,7 @@ export function createAgent(opts) {
       S.idleUntil = now + idlePauseMs();
       hideIcon();
     } else if (S.unacked > 0 && S.state !== 'busy' && S.state !== 'duelWalk') {
+      endWalkDisplay();
       S.state = 'alert';
       if (!REDUCED) {
         if (now >= S.shakeAt) {
@@ -405,6 +481,7 @@ export function createAgent(opts) {
         S.idleUntil = now + idlePauseMs();
       }
     } else if (REDUCED) {
+      endWalkDisplay();
       S.state = 'idle';
       S.x = home.x;
       S.y = home.y;
@@ -421,7 +498,7 @@ export function createAgent(opts) {
         if (pick && playActivity(pick.name, pick.durationMs, 'idle')) {
           // state -> activity
         } else {
-          startWalk(pickTarget());
+          startWalk(pickTarget(), now);
         }
       }
     } else if (S.state === 'duelWalk') {
@@ -455,35 +532,47 @@ export function createAgent(opts) {
       const step = SPEED * dt;
       if (dist <= step) {
         S.phase = advancePhase(S.phase, dist, STRIDE);
+        S.walkedPx += dist;
         S.x = wp.x;
         S.y = Math.max(wp.y, band.yMin);
         if (S.path && S.path.length) S.path.shift();
         if (!S.path || !S.path.length) {
+          endWalkDisplay();
           S.state = 'idle';
           S.target = null;
           S.path = [];
           // Penahan duel: idle panjang agar manajer sempat memulai duel.
           S.idleUntil = act.st.duelHold ? now + 30000 : now + idlePauseMs();
         } else {
-          S.dir = S.path[0].x - S.x < 0 ? -1 : 1;
+          // Hadap di awal segmen berikut; frame ikut jarak yang ditempuh.
+          faceAtSegmentStart(S.path[0].x - S.x, S.path[0].y - S.y, now);
+          renderWalkStep();
         }
       } else {
         S.phase = advancePhase(S.phase, step, STRIDE);
+        S.walkedPx += step;
         S.x += (dx / dist) * step;
         S.y += (dy / dist) * step;
         if (S.y < band.yMin) S.y = band.yMin;
-        S.dir = dx < 0 ? -1 : 1;
+        // Hadap TIDAK diubah tiap frame (moonwalk): hanya di awal segmen.
+        renderWalkStep();
       }
     }
 
     // Jaring pengaman: kaki tak pernah di belakang bos.
     if (S.y < band.yMin) S.y = band.yMin;
+    // Jaring pengaman: tampilan jalan tak boleh bocor ke state lain.
+    if (S.state !== 'walking' && player && typeof player.walkActive === 'function' && player.walkActive()) {
+      endWalkDisplay();
+    }
+    const walkOn = S.state === 'walking' && S.walkSrc === 'jalan';
 
-    // Rig jalan: tampil saat berjalan; luruh saat berhenti agar tak meletup;
+    // Rig jalan: hanya fallback (tanpa strip "jalan") dan duelWalk;
+    // jalan-"jalan" memakai frame samping via player (kaki menancap).
     // aktivitas/alert/sibuk/offline menyembunyikannya langsung.
     if (rigApi) {
       const lift = { lift: WALK_LIFT[id] ?? 7 };
-      if (S.state === 'walking' || S.state === 'duelWalk') {
+      if ((S.state === 'walking' && !walkOn) || S.state === 'duelWalk') {
         S.amp = Math.min(1, S.amp + dt / AMP_RAMP);
         rigApi.show();
         img.style.visibility = 'hidden';
@@ -511,8 +600,9 @@ export function createAgent(opts) {
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
     el.style.zIndex = String(Math.round(S.y));
     // Saat aktivitas main, player yang mengatur transform (flip bisa beda arah).
+    // Saat jalan-"jalan", showWalk yang mengatur transform (flip artwork kanan).
     if (act.st.cur && player) player.tick(now, S.dir);
-    else img.style.transform = S.dir < 0 ? 'scaleX(-1)' : 'none';
+    else if (!walkOn) img.style.transform = S.dir < 0 ? 'scaleX(-1)' : 'none';
 
     // Label di bawah kaki (posisi layar)
     const p = stage.toScreen(S.x, S.y);
@@ -561,6 +651,7 @@ export function createAgent(opts) {
     topOffset: h,
     debug() {
       const cur = player ? player.current() : null;
+      const walking = S.state === 'walking';
       return {
         state: S.state,
         x: Math.round(S.x),
@@ -575,6 +666,10 @@ export function createAgent(opts) {
         phase: Math.round(S.phase * 100) / 100,
         amp: Math.round(S.amp * 100) / 100,
         socialUntil: S.socialUntil,
+        dir: S.dir,
+        walk: walking ? S.walkSrc || walkCap() : walkCap(),
+        walkIndex: S.walkIndex,
+        walkedPx: Math.round(S.walkedPx * 100) / 100,
       };
     },
   };

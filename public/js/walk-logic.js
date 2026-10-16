@@ -5,6 +5,11 @@
 
 // Langkah: 14 px tampil per langkah, jadi 35 px/dtk ~= 2,5 langkah/dtk.
 export const STRIDE = 14;
+// Satu frame jalan ("jalan") tiap 7 px jarak tempuh.
+export const FRAME_PX = 7;
+// Hadap jalan: komponen horizontal min 0,35 x vertikal, anti-flip 0,3 dtk.
+export const FLIP_SLOPE = 0.35;
+export const FLIP_HYSTERESIS_MS = 300;
 // Kaki diperlihatkan OVERLAP px di atas bandTop agar tak ada celah
 // saat badan mengayun ke atas (bodyBob maks 2 px).
 export const FOOT_OVERLAP = 3;
@@ -44,6 +49,42 @@ export function walkPose(phase, amp, cfg) {
     bodyBob: 2 * Math.abs(s) * amp,
     lean: (-1.6 + 0.8 * s) * amp,
   };
+}
+
+/**
+ * Frame jalan dari JARAK tempuh (bukan waktu): bingkai hanya berganti
+ * selagi agen bergerak, kaki tak bergeser (no slide).
+ * @param {number} walkedPx jarak tempuh kumulatif (px)
+ * @param {number} n jumlah frame
+ * @param {number} [framePx=FRAME_PX] px per frame
+ * @returns {number} indeks frame 0..n-1
+ */
+export function frameFromDistance(walkedPx, n, framePx = FRAME_PX) {
+  if (!(n > 0)) return 0;
+  const step = framePx > 0 ? framePx : FRAME_PX;
+  const k = Math.floor(Math.max(0, walkedPx) / step);
+  return ((k % n) + n) % n;
+}
+
+/**
+ * Arah hadap baru untuk segmen jalan (artwork menghadap kanan).
+ * Vertikal dominan (|dx| < 0,35*|dy|) mempertahankan hadap lama;
+ * flip maksimal sekali per 0,3 dtk (histeresis).
+ * @param {number} dx komponen horizontal segmen saat ini
+ * @param {number} dy komponen vertikal segmen saat ini
+ * @param {number} lastDir hadap terakhir (1 kanan, -1 kiri)
+ * @param {number} lastFlipAt timestamp flip terakhir (ms)
+ * @param {number} now sekarang (ms)
+ * @returns {number} 1 | -1
+ */
+export function shouldFlip(dx, dy, lastDir, lastFlipAt, now) {
+  const base = lastDir < 0 ? -1 : 1;
+  if (Math.abs(dx) < FLIP_SLOPE * Math.abs(dy)) return base;
+  if (dx === 0) return base;
+  const want = dx < 0 ? -1 : 1;
+  if (want === base) return base;
+  if (now - lastFlipAt < FLIP_HYSTERESIS_MS) return base;
+  return want;
 }
 
 /**

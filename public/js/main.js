@@ -287,6 +287,7 @@ function paintDebug(agents, activities) {
     let line = `${a.id}: ${d.state}/${d.status} (${d.x},${d.y})`;
     if (d.act) line += ` act:${d.act}#${d.frame}`;
     if (typeof d.phase === 'number') line += ` ph:${d.phase} amp:${d.amp}`;
+    if (d.walk || d.state === 'walking') line += ` walk:${d.walk || '-'}#${d.walkIndex ?? -1} ${d.walkedPx ?? 0}px dir:${d.dir}`;
     lines.push(line);
   }
   el.textContent = lines.join('\n');
