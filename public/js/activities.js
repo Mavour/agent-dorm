@@ -210,8 +210,9 @@ export function createActivities(opts) {
     return { ok: true };
   }
 
-  function abort(retryMs) {
+  function abort(retryMs, why) {
     if (!duel) return;
+    if (why) console.info(`[duel] abort (${why})`);
     const now = performance.now();
     releasePair(duel.a, duel.b);
     duel = null;
@@ -250,21 +251,21 @@ export function createActivities(opts) {
     const db = b.debug();
     // Abort bersih: offline, cue baru, atau popup dibuka. Alert TIDAK abort.
     if (da.status === 'offline' || db.status === 'offline' || isPopupOpen('exitbot') || isPopupOpen('lpwatcher')) {
-      abort();
+      abort(undefined, `ganggu (${da.status}/${db.status} popup:${isPopupOpen('exitbot')}/${isPopupOpen('lpwatcher')})`);
       return;
     }
     if (a.cueSeq() !== duel.cueA || b.cueSeq() !== duel.cueB) {
-      abort();
+      abort(undefined, 'cue milik duelist');
       return;
     }
     if (duel.phase === 'approach') {
       if (now - duel.startedAt > DUEL_APPROACH_MS) {
-        abort(DUEL_RETRY_MS);
+        abort(DUEL_RETRY_MS, 'timeout pendekatan 25s');
         return;
       }
       const okState = (d) => d.state === 'duelWalk' || d.state === 'idle' || d.state === 'activity';
       if (!okState(da) || !okState(db)) {
-        abort(DUEL_RETRY_MS);
+        abort(DUEL_RETRY_MS, `state lepas (${da.state}/${db.state})`);
         return;
       }
       const near = (d, t) => Math.hypot(d.x - t.x, d.y - t.y) < DUEL_ARRIVE_PX;
@@ -280,17 +281,18 @@ export function createActivities(opts) {
         const okA = a.playActivity('duel', dur, 'duel');
         const okB = b.playActivity('duel', dur, 'duel');
         if (!okA || !okB) {
-          abort(DUEL_RETRY_MS);
+          abort(DUEL_RETRY_MS, 'strip duel gagal mulai');
           return;
         }
         duel.phase = 'duel';
         duel.endsAt = now + dur;
+        console.info(`[duel] tarung! (${Math.round(dur)}ms)`);
       }
     } else {
       if (da.state !== 'activity' || db.state !== 'activity') {
         // Offline/cue/popup sudah ditangani; state lain = abort + retry.
-        if (da.status === 'offline' || db.status === 'offline') abort();
-        else abort(DUEL_RETRY_MS);
+        if (da.status === 'offline' || db.status === 'offline') abort(undefined, 'offline saat tarung');
+        else abort(DUEL_RETRY_MS, `state tarung lepas (${da.state}/${db.state})`);
         return;
       }
       // Debing pedang berkala selama tarung.
@@ -302,6 +304,7 @@ export function createActivities(opts) {
         releasePair(a, b);
         duel = null;
         sched.notifyEnd(now);
+        console.info('[duel] selesai bersih.');
       }
     }
   }
