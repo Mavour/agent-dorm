@@ -4,11 +4,12 @@ import {
   duelBlockers,
   createDuelScheduler,
   duelTargets,
+  closeDuelTargets,
   DUEL_ALERT_GRACE_MS,
   DUEL_PENDING_MS,
 } from '../public/js/activity-logic.js';
 import { walkBand, blockedRect, isFree, segmentIntersectsRect, planPath } from '../public/js/path-logic.js';
-import { DUEL_GAP } from '../public/js/activities.js';
+import { DUEL_GAP, DUEL_CLOSE_PX } from '../public/js/activities.js';
 
 const W = 1376;
 const H = 768;
@@ -109,6 +110,31 @@ describe('duel: scheduler pending + giveup + retry', () => {
 });
 
 describe('duel: geometri titik temu', () => {
+  it('DUEL_CLOSE_PX = 220', () => {
+    assert.equal(DUEL_CLOSE_PX, 220);
+  });
+  it('sudah dekat -> titik tengah, sisi ikut posisi, gap tepat', () => {
+    const rect = blockedRect(SEAT);
+    const t = closeDuelTargets({ x: 600, y: 700 }, { x: 700, y: 710 }, DUEL_GAP, rect);
+    assert.ok(t);
+    assert.equal(t.m.x, 650);
+    assert.equal(t.m.y, 705);
+    assert.ok(Math.abs(t.b.x - t.a.x - DUEL_GAP) < 1e-9);
+    assert.ok(t.a.x < t.b.x, 'exitbot (kiri) tetap kiri');
+    assert.ok(isFree(t.m, rect) && isFree(t.a, rect) && isFree(t.b, rect));
+  });
+  it('posisi terbalik -> sisi ikut (tak bersilangan)', () => {
+    const rect = blockedRect(SEAT);
+    const t = closeDuelTargets({ x: 1000, y: 700 }, { x: 900, y: 700 }, DUEL_GAP, rect);
+    assert.ok(t);
+    assert.ok(t.a.x > t.b.x, 'exitbot (kanan) tetap kanan');
+    assert.ok(Math.abs(t.a.x - t.b.x - DUEL_GAP) < 1e-9);
+  });
+  it('titik tengah di zona bos -> null (fallback acak)', () => {
+    const rect = blockedRect(SEAT);
+    // Keduanya bebas (kiri-kanan rect) tapi tengahnya masuk zona bos.
+    assert.equal(closeDuelTargets({ x: 500, y: 660 }, { x: 876, y: 660 }, DUEL_GAP, rect), null);
+  });
   it('selalu di walk band, bebas rect, tepat DUEL_GAP', () => {
     assert.equal(DUEL_GAP, 140);
     const band = walkBand(AREA, SEAT);

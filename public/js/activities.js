@@ -4,6 +4,7 @@
  */
 import {
   duelTargets,
+  closeDuelTargets,
   resolveActivities,
   pickSocialPair,
   SOCIAL_MS,
@@ -13,9 +14,12 @@ import {
   DUEL_RETRY_MS,
 } from './activity-logic.js';
 import { dashWhoosh, swordClash, duelMode } from './sound.js';
+import { blockedRect } from './path-logic.js';
 
 export const DUEL_GAP = 140;
 export const DUEL_ARRIVE_PX = 4;
+/** Sudah sedekat ini -> langsung tarung di titik tengah. */
+export const DUEL_CLOSE_PX = 220;
 const DUEL_PLAY_MS = [8000, 12000];
 
 /**
@@ -141,10 +145,22 @@ export function createActivities(opts) {
       console.info('[duel] blocked:', reasons);
       return { ok: false, reasons };
     }
-    const t = duelTargets(stage.walkArea(), stage.bossSeat(), DUEL_GAP, Math.random, stage.W, stage.H);
+    // Sudah berdekatan -> temu di titik tengah, langsung tarung di tempat.
+    // Jauh -> titik acak seperti biasa.
+    const pa = { x: a.debug().x, y: a.debug().y };
+    const pb = { x: b.debug().x, y: b.debug().y };
+    let t = null;
+    let close = false;
+    if (Math.hypot(pa.x - pb.x, pa.y - pb.y) <= DUEL_CLOSE_PX) {
+      t = closeDuelTargets(pa, pb, DUEL_GAP, blockedRect(stage.bossSeat()));
+      close = !!t;
+    }
     if (!t) {
-      console.info('[duel] blocked:', ['titik temu tak ada']);
-      return { ok: false, reasons: ['titik temu tak ada'] };
+      t = duelTargets(stage.walkArea(), stage.bossSeat(), DUEL_GAP, Math.random, stage.W, stage.H);
+      if (!t) {
+        console.info('[duel] blocked:', ['titik temu tak ada']);
+        return { ok: false, reasons: ['titik temu tak ada'] };
+      }
     }
     // Hentikan aktivitas idle/walking biasa (event/cue sudah diblokir).
     for (const ag of [a, b]) {
@@ -162,13 +178,8 @@ export function createActivities(opts) {
     }
     a.duelTo(t.a.x, t.a.y);
     b.duelTo(t.b.x, t.b.y);
-    // Hadap berhadapan sejak awal (exitbot kiri menghadap kanan, dst).
-    try {
-      if (typeof a.setFacing === 'function') a.setFacing(1);
-      if (typeof b.setFacing === 'function') b.setFacing(-1);
-    } catch {
-      /* abaikan */
-    }
+    // Hadap berhadapan (ikut sisi target masing-masing).
+    facePair(a, b, t.a, t.b);
     duel = {
       phase: 'approach',
       a,
@@ -182,10 +193,21 @@ export function createActivities(opts) {
       forced: force,
     };
     sched.notifyStart();
-    console.info(`[duel] mulai! (${force ? 'paksa' : 'otomatis'})`);
+    console.info(`[duel] mulai! (${force ? 'paksa' : 'otomatis'}${close ? ', dekat' : ''})`);
     dashWhoosh();
     duelMode(true);
     return { ok: true };
+  }
+
+  /** Hadapkan dua duelist saling memandang (ikut posisi target). */
+  function facePair(a, b, ta, tb) {
+    try {
+      const dirA = tb.x >= ta.x ? 1 : -1;
+      if (typeof a.setFacing === 'function') a.setFacing(dirA);
+      if (typeof b.setFacing === 'function') b.setFacing(-dirA);
+    } catch {
+      /* abaikan */
+    }
   }
 
   /**
@@ -271,12 +293,7 @@ export function createActivities(opts) {
       const near = (d, t) => Math.hypot(d.x - t.x, d.y - t.y) < DUEL_ARRIVE_PX;
       if (near(da, duel.ta) && near(db, duel.tb)) {
         // Hadapkan sebelum strip duel (tanpa mirror artwork direksional).
-        try {
-          if (typeof a.setFacing === 'function') a.setFacing(1);
-          if (typeof b.setFacing === 'function') b.setFacing(-1);
-        } catch {
-          /* abaikan */
-        }
+        facePair(a, b, duel.ta, duel.tb);
         const dur = DUEL_PLAY_MS[0] + Math.random() * (DUEL_PLAY_MS[1] - DUEL_PLAY_MS[0]);
         const okA = a.playActivity('duel', dur, 'duel');
         const okB = b.playActivity('duel', dur, 'duel');

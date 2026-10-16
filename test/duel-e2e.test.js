@@ -200,3 +200,43 @@ describe('duel e2e: dash secepat kilat lalu normal lagi', () => {
     assert.equal(a.debug().dash, 1);
   });
 });
+
+describe('duel e2e: sudah dekat -> langsung tarung', () => {
+  it('forceStart saat sebelahan -> fighting dalam <150 tick', async () => {
+    const { agents, activities } = makeWorld();
+    await flush();
+    const [a, b] = agents;
+    // Giring keduanya ke tengah yang sama (titik bebas di bawah zona bos).
+    a.duelTo(700, 700);
+    b.duelTo(760, 700);
+    let now = performance.now();
+    for (let i = 0; i < 600; i++) {
+      now += 50;
+      a.frame(now, 0.05);
+      b.frame(now, 0.05);
+      const da = a.debug();
+      const db = b.debug();
+      if (Math.hypot(da.x - db.x, da.y - db.y) <= 200) break;
+    }
+    const da = a.debug();
+    const db = b.debug();
+    assert.ok(Math.hypot(da.x - db.x, da.y - db.y) <= 220, 'gagal mendekatkan agen');
+    const r = activities.forceStart();
+    assert.deepEqual(r, { ok: true });
+    let ticks = 0;
+    let fought = false;
+    for (let i = 0; i < 300; i++) {
+      now += 50;
+      a.frame(now, 0.05);
+      b.frame(now, 0.05);
+      activities.tick(now);
+      ticks += 1;
+      if (activities.info().phase === 'fighting') {
+        fought = true;
+        break;
+      }
+    }
+    assert.ok(fought, 'sudah dekat tapi tak kunjung tarung');
+    assert.ok(ticks < 150, `kelamaan: ${ticks} tick untuk mulai tarung`);
+  });
+});

@@ -2,6 +2,7 @@
  * Logika aktivitas murni (tanpa DOM): indeks frame, penempatan kaki,
  * pemilihan aktivitas idle, dan kelayakan/target duel. Bisa diuji penuh.
  */
+import { isFree } from './path-logic.js';
 
 /**
  * Indeks frame pada waktu elapsed.
@@ -208,6 +209,25 @@ export function duelTargets(area, seat, gap, rng) {
     return { m: mm, a, b };
   }
   return null;
+}
+
+/**
+ * Titik duel saat keduanya SUDAH dekat: temu di titik tengah, langsung
+ * tarung di tempat (tak perlu lari jauh). Sisi sesuai posisi sekarang
+ * (yang kiri tetap kiri, tak perlu bersilangan). Null bila titik tengah
+ * masuk zona bos (pemanggil fallback ke duelTargets acak).
+ * @param {{ x: number, y: number }} pa posisi exitbot sekarang
+ * @param {{ x: number, y: number }} pb posisi lpwatcher sekarang
+ * @param {number} gap jarak kedua agen
+ * @param {{ x0: number, x1: number, y0: number, y1: number }} rect zona bos
+ * @returns {{ m: any, a: any, b: any } | null}
+ */
+export function closeDuelTargets(pa, pb, gap, rect) {
+  const m = { x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2 };
+  const left = { x: m.x - gap / 2, y: m.y };
+  const right = { x: m.x + gap / 2, y: m.y };
+  if (!isFree(m, rect) || !isFree(left, rect) || !isFree(right, rect)) return null;
+  return pa.x <= pb.x ? { m, a: left, b: right } : { m, a: right, b: left };
 }
 
 // ---------------------------------------------------------------------------
