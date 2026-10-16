@@ -328,9 +328,14 @@ export function createAgent(opts) {
 
   /**
    * Cue terserial dari director -> bubble + ikon + busy + aktivitas event.
+   * Hanya cue untuk agen ini yang dicatat (cueUntil/cueSeq): cue agen lain
+   * tidak boleh memblokir duel atau aktivitas agen ini.
    * @param {any} cue
    */
   function onCue(cue) {
+    const ev0 = (cue && cue.event) || {};
+    const mine = (cue && cue.agentId === id) || ev0.agentId === id;
+    if (!mine) return;
     act.st.cueSeq += 1;
     act.st.cueUntil = performance.now() + (cue.durationMs || 6500);
     // Saat duel (jalan/activity duel): catat cue untuk deteksi abort,

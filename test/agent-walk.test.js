@@ -117,7 +117,7 @@ function makeStage(doc) {
 }
 
 const storeOk = { get: () => ({ status: 'ok', alerts: [] }) };
-const bubbles = { register() {} };
+const bubbles = { register() {}, say() {} };
 
 function manifestWithJalan() {
   return {
@@ -240,5 +240,54 @@ describe('agent: jalan kaki pakai strip jalan', () => {
     } finally {
       console.warn = origWarn;
     }
+  });
+});
+
+describe('agent: cue hanya untuk agen sendiri', () => {
+  async function makeWalking() {
+    const doc = globalThis.document;
+    const a = createAgent({
+      id: 'exitbot',
+      cfg: manifestWithJalan().agents.exitbot,
+      manifest: manifestWithJalan(),
+      store: storeOk,
+      stage: makeStage(doc),
+      bubbles,
+      icons: {},
+      onOpen() {},
+    });
+    await flush();
+    let now = startWalking(a);
+    // Satu frame gerak agar strip jalan ter-render.
+    now += 50;
+    a.frame(now, 0.05);
+    assert.equal(a.debug().state, 'walking');
+    return { a, img: spriteImg(doc) };
+  }
+
+  it('cue agen lain diabaikan total (jalan + duel tak terganggu)', async () => {
+    const { a, img } = await makeWalking();
+    const before = a.debug();
+    assert.equal(before.state, 'walking');
+    const walkingSrc = img.getAttribute('src');
+    assert.ok(walkingSrc.includes('jalan-'));
+    a.onCue({ agentId: 'alert', event: { agentId: 'alert', type: 'coin_found', data: { symbol: 'X', score: 80 } }, durationMs: 6500 });
+    const after = a.debug();
+    assert.equal(after.state, 'walking');
+    assert.equal(after.cueSeq, before.cueSeq);
+    assert.equal(after.cueUntil, before.cueUntil);
+    assert.equal(img.getAttribute('src'), walkingSrc);
+  });
+
+  it('cue sendiri dicatat dan menyela jalan', async () => {
+    const { a, img } = await makeWalking();
+    const before = a.debug();
+    const baseSrc = '/assets/sprites/exit-bot.png';
+    a.onCue({ agentId: 'exitbot', event: { agentId: 'exitbot', type: 'position_closed', data: { pair: 'SOL/USDC', pnlUsd: 10 } }, durationMs: 6500 });
+    const after = a.debug();
+    assert.equal(after.cueSeq, before.cueSeq + 1);
+    assert.ok(after.cueUntil > before.cueUntil);
+    assert.equal(after.state, 'busy');
+    assert.equal(img.getAttribute('src'), baseSrc);
   });
 });
