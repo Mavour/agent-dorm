@@ -162,15 +162,21 @@ describe('activity-logic: duelEligible + duelTargets', () => {
   it('duelTargets dalam batas, hindari bos, gap tepat', () => {
     const area = { xMin: 80, xMax: 1290, yMin: 580, yMax: 745 };
     const seat = { x: 688, y: 614 };
+    // Band baru: yMin = seat.y + 28; rect 170/60 + margin 14.
+    const band = { xMin: area.xMin, xMax: area.xMax, yMin: seat.y + 28, yMax: area.yMax };
+    const rect = { x0: seat.x - 170, x1: seat.x + 170, y0: 0, y1: seat.y + 60 };
+    const m = 14;
+    const freePt = (p) => p.x <= rect.x0 - m || p.x >= rect.x1 + m || p.y <= rect.y0 - m || p.y >= rect.y1 + m;
     const rngs = [0.05, 0.5, 0.95];
     for (const r of rngs) {
       const t = duelTargets(area, seat, 140, () => r, 1376, 768);
       assert.ok(t, 'harus ada titik temu');
-      assert.ok(t.m.x >= area.xMin + 160 && t.m.x <= area.xMax - 160);
-      assert.ok(t.m.y >= 0.8 * 768 && t.m.y <= 0.93 * 768);
+      assert.ok(t.m.x >= band.xMin + 70 && t.m.x <= band.xMax - 70);
+      assert.ok(t.m.y >= band.yMin && t.m.y <= band.yMax);
       assert.equal(t.a.x, t.m.x - 70);
       assert.equal(t.b.x, t.m.x + 70);
-      assert.ok(!(Math.abs(t.m.x - seat.x) < 150 && t.m.y > seat.y - 70 && t.m.y < seat.y + 40));
+      assert.equal(t.b.x - t.a.x, 140);
+      assert.ok(freePt(t.m) && freePt(t.a) && freePt(t.b), 'titik duel harus bebas dari rect');
     }
   });
 });

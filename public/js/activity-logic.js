@@ -181,7 +181,7 @@ export function duelEligible(p) {
 
 /**
  * Titik temu duel + target masing-masing (gap 140 px).
- * x dalam [xMin+160, xMax-160], hindari zona eksklusi bos, y 0.80H-0.93H.
+ * M di dalam walk band dan bebas dari blocked rect; a/b tepat gap apart.
  * @param {{ xMin: number, xMax: number, yMin: number, yMax: number }} area px stage
  * @param {{ x: number, y: number }} seat kursi bos (px stage)
  * @param {number} gap jarak kedua agen
@@ -190,13 +190,26 @@ export function duelEligible(p) {
  * @param {number} H tinggi stage
  */
 export function duelTargets(area, seat, gap, rng, W, H) {
+  void W;
+  void H;
+  // Impor dinamis dihindari agar murni; logika band/rect di-inline
+  // konsisten dengan path-logic.js (yMin = seat.y+28, rect 170/60).
+  const band = { xMin: area.xMin, xMax: area.xMax, yMin: seat.y + 28, yMax: area.yMax };
+  const rect = { x0: seat.x - 170, x1: seat.x + 170, y0: 0, y1: seat.y + 60 };
+  const m = 14;
+  const free = (p) => p.x <= rect.x0 - m || p.x >= rect.x1 + m || p.y <= rect.y0 - m || p.y >= rect.y1 + m;
   for (let i = 0; i < 20; i++) {
-    const mx = area.xMin + 160 + rng() * (area.xMax - 160 - (area.xMin + 160));
-    const my = 0.8 * H + rng() * (0.93 * H - 0.8 * H);
-    // Hindari zona eksklusi bos (konsisten dengan pickTarget).
-    if (Math.abs(mx - seat.x) < 150 && my > seat.y - 70 && my < seat.y + 40) continue;
-    if (mx - gap / 2 < area.xMin || mx + gap / 2 > area.xMax) continue;
-    return { m: { x: mx, y: my }, a: { x: mx - gap / 2, y: my }, b: { x: mx + gap / 2, y: my } };
+    const loX = band.xMin + gap / 2;
+    const hiX = band.xMax - gap / 2;
+    if (hiX <= loX) return null;
+    const mx = loX + rng() * (hiX - loX);
+    const my = band.yMin + rng() * (band.yMax - band.yMin);
+    const mm = { x: mx, y: my };
+    const a = { x: mx - gap / 2, y: my };
+    const b = { x: mx + gap / 2, y: my };
+    if (!free(mm) || !free(a) || !free(b)) continue;
+    if (a.x < band.xMin || b.x > band.xMax) continue;
+    return { m: mm, a, b };
   }
   return null;
 }

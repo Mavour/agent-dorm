@@ -12,6 +12,7 @@ import { createBubbles } from './bubbles.js';
 import { createPopup } from './popup.js';
 import { createActivities } from './activities.js';
 import { resolveActivities } from './activity-logic.js';
+import { walkBand, blockedRect } from './path-logic.js';
 
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -90,7 +91,8 @@ async function main() {
 
   connectSocket(store, hud);
   setupDemo(agents, manifest, activities);
-  setupDebug(agents);
+  window.__PATH_DEBUG__ = { walkBand, blockedRect };
+  setupDebug(agents, stage);
 
   // Loop animasi (jeda saat tab hidden)
   let last = performance.now();
@@ -224,7 +226,7 @@ function setupDemo(agents, manifest, activities) {
 }
 
 /** @param {any[]} agents */
-function setupDebug(agents) {
+function setupDebug(agents, stage) {
   if (!DEBUG) return;
   const el = document.getElementById('debug');
   el.hidden = false;
@@ -232,6 +234,27 @@ function setupDebug(agents) {
   document.body.classList.add('show-hit');
   window.__FPS__ = 0;
   window.__paintDebug = () => paintDebug(agents);
+  // Gambar zona eksklusi bos + tepi walk band di atas stage.
+  try {
+    if (stage) {
+      const { walkBand, blockedRect } = window.__PATH_DEBUG__ || {};
+      if (walkBand && blockedRect) {
+        const band = walkBand(stage.walkArea(), stage.bossSeat());
+        const rect = blockedRect(stage.bossSeat());
+        const stageEl = stage.stageEl;
+        const box = document.createElement('div');
+        box.setAttribute('data-debug', 'blocked');
+        box.style.cssText = `position:absolute;left:${rect.x0}px;top:${rect.y0}px;width:${rect.x1 - rect.x0}px;height:${rect.y1 - rect.y0}px;border:2px dashed rgba(248,113,113,0.9);background:rgba(248,113,113,0.08);pointer-events:none;z-index:5;`;
+        stageEl.appendChild(box);
+        const edge = document.createElement('div');
+        edge.setAttribute('data-debug', 'band');
+        edge.style.cssText = `position:absolute;left:${band.xMin}px;top:${band.yMin}px;width:${band.xMax - band.xMin}px;height:2px;background:rgba(74,222,128,0.9);pointer-events:none;z-index:5;`;
+        stageEl.appendChild(edge);
+      }
+    }
+  } catch {
+    /* abaikan */
+  }
 }
 
 /** @param {any[]} agents */

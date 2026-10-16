@@ -1,6 +1,7 @@
 /**
  * Gerak jelajah: posisi awal + target acak (hindari bos + agen lain).
  */
+import { walkBand, blockedRect, isFree } from './path-logic.js';
 
 /**
  * @param {string} id
@@ -23,10 +24,12 @@ export function homeFor(id, W, H) {
  * @param {() => number} [rng=Math.random]
  */
 export function pickWanderTarget(area, seat, peers, home, rng = Math.random) {
+  const band = walkBand(area, seat);
+  const rect = blockedRect(seat);
   for (let i = 0; i < 12; i++) {
-    const x = area.xMin + rng() * (area.xMax - area.xMin);
-    const y = area.yMin + rng() * (area.yMax - area.yMin);
-    if (Math.abs(x - seat.x) < 150 && y > seat.y - 70 && y < seat.y + 40) continue;
+    const x = band.xMin + rng() * (band.xMax - band.xMin);
+    const y = band.yMin + rng() * (band.yMax - band.yMin);
+    if (!isFree({ x, y }, rect)) continue;
     let ok = true;
     for (const t of peers()) {
       if (t && t.x !== undefined && Math.hypot(t.x - x, t.y - y) < 120) {

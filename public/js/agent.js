@@ -6,6 +6,7 @@
 import { noteEvent, reactToCue } from './reactions.js';
 import { createIconLayer } from './icon-layer.js';
 import { homeFor, pickWanderTarget } from './wander.js';
+import { walkBand, blockedRect, isFree, planPath } from './path-logic.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
 import { resolveActivities, resolveFeet, idlePauseMs, walkTargetAllowed } from './activity-logic.js';
@@ -113,15 +114,18 @@ export function createAgent(opts) {
 
   const area = stage.walkArea();
   const seat = stage.bossSeat();
+  const band = walkBand(area, seat);
+  const rect = blockedRect(seat);
   const home = homeFor(id, stage.W, stage.H);
   const peers = () => (window.__AGENTS__ || []).filter((o) => o !== api).map((o) => o.debug().target || o.debug());
 
   const S = {
     id,
     x: home.x,
-    y: home.y,
+    y: Math.max(home.y, band.yMin),
     state: 'idle',
     target: null,
+    path: [],
     idleUntil: performance.now() + idlePauseMs(),
     busyUntil: 0,
     shakeAt: 0,
@@ -168,12 +172,30 @@ export function createAgent(opts) {
 
   function pickTarget() {
     // Target baru min 100 px dari target sebelumnya (variasi rute).
+    // Berjalan di walk band dan bebas dari blocked rect.
     let t = pickWanderTarget(area, seat, peers, home);
-    for (let i = 0; i < 6 && !walkTargetAllowed(S.prevTarget, t); i++) {
-      t = pickWanderTarget(area, seat, peers, home);
+    if (!isFree(t, rect)) {
+      for (let i = 0; i < 6 && !isFree(t, rect); i++) {
+        t = pickWanderTarget(area, seat, peers, home);
+      }
     }
+    for (let i = 0; i < 6 && !walkTargetAllowed(S.prevTarget, t); i++) {
+      const c = pickWanderTarget(area, seat, peers, home);
+      if (isFree(c, rect)) t = c;
+    }
+    t.y = Math.max(t.y, band.yMin);
     S.prevTarget = t;
     return t;
+  }
+
+  /** Mulai jalan ke `to` lewat waypoint planPath. */
+  function startWalk(to) {
+    const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
+    S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
+    S.target = dest;
+    S.prevTarget = dest;
+    S.state = 'walking';
+    act.noteWalk();
   }
 
   function statusOf() {
@@ -254,6 +276,7 @@ export function createAgent(opts) {
     if (!act.play(name, durationMs, kind, S.unacked)) return false;
     S.state = 'activity';
     S.target = null;
+    S.path = [];
     return true;
   }
 
@@ -275,13 +298,10 @@ export function createAgent(opts) {
     return act.st.cueSeq;
   }
 
-  /** Jalan duel ke titik eksplisit (logika jalan yang sudah ada). */
+  /** Jalan duel ke titik eksplisit (lewat waypoint anti-bos). */
   function duelTo(x, y) {
     act.st.duelHold = true;
-    S.target = { x, y };
-    S.prevTarget = S.target;
-    S.state = 'walking';
-    act.noteWalk();
+    startWalk({ x, y });
   }
 
   /** Jeda sosial: hadap arah dir, diam hingga untilMs. @returns {boolean} */
@@ -352,31 +372,40 @@ export function createAgent(opts) {
         if (pick && playActivity(pick.name, pick.durationMs, 'idle')) {
           // state -> activity
         } else {
-          S.target = pickTarget();
-          S.state = 'walking';
-          act.noteWalk();
+          startWalk(pickTarget());
         }
       }
-    } else if (S.state === 'walking' && S.target) {
-      const dx = S.target.x - S.x;
-      const dy = S.target.y - S.y;
+    } else if (S.state === 'walking' && (S.target || (S.path && S.path.length))) {
+      const wp = S.path && S.path.length ? S.path[0] : S.target;
+      const dx = wp.x - S.x;
+      const dy = wp.y - S.y;
       const dist = Math.hypot(dx, dy);
       const step = SPEED * dt;
       if (dist <= step) {
         S.phase = advancePhase(S.phase, dist, STRIDE);
-        S.x = S.target.x;
-        S.y = S.target.y;
-        S.state = 'idle';
-        S.target = null;
-        // Penahan duel: idle panjang agar manajer sempat memulai duel.
-        S.idleUntil = act.st.duelHold ? now + 30000 : now + idlePauseMs();
+        S.x = wp.x;
+        S.y = Math.max(wp.y, band.yMin);
+        if (S.path && S.path.length) S.path.shift();
+        if (!S.path || !S.path.length) {
+          S.state = 'idle';
+          S.target = null;
+          S.path = [];
+          // Penahan duel: idle panjang agar manajer sempat memulai duel.
+          S.idleUntil = act.st.duelHold ? now + 30000 : now + idlePauseMs();
+        } else {
+          S.dir = S.path[0].x - S.x < 0 ? -1 : 1;
+        }
       } else {
         S.phase = advancePhase(S.phase, step, STRIDE);
         S.x += (dx / dist) * step;
         S.y += (dy / dist) * step;
+        if (S.y < band.yMin) S.y = band.yMin;
         S.dir = dx < 0 ? -1 : 1;
       }
     }
+
+    // Jaring pengaman: kaki tak pernah di belakang bos.
+    if (S.y < band.yMin) S.y = band.yMin;
 
     // Rig jalan: tampil saat berjalan; luruh saat berhenti agar tak meletup;
     // aktivitas/alert/sibuk/offline menyembunyikannya langsung.
