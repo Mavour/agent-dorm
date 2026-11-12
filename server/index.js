@@ -35,6 +35,7 @@ app.addHook('onSend', async (req, reply, payload) => {
 // Basic auth opsional (lindungi semuanya)
 if (config.basicUser && config.basicPass) {
   await app.register(fastifyBasicAuth, {
+    authenticate: { realm: 'Agent Dorm' },
     validate: async (user, pass) => {
       if (user !== config.basicUser || pass !== config.basicPass) throw new Error('Unauthorized');
     },
