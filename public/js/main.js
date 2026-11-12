@@ -18,7 +18,7 @@ import { unlock, setMuted, isMuted } from './sound.js';
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Penanda build (cek kode baru vs cache lama via console/?debug=1).
-window.__BUILD__ = 'dash-lunge-2';
+window.__BUILD__ = 'dash-natural-3';
 console.info(`[dorm] build ${window.__BUILD__}`);
 
 async function main() {

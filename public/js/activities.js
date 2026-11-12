@@ -13,7 +13,7 @@ import {
   DUEL_APPROACH_MS,
   DUEL_RETRY_MS,
 } from './activity-logic.js';
-import { dashWhoosh, swordClash, duelMode } from './sound.js';
+import { dashWhoosh, dashImpact, duelMode } from './sound.js';
 import { blockedRect } from './path-logic.js';
 
 export const DUEL_GAP = 140;
@@ -176,10 +176,11 @@ export function createActivities(opts) {
         /* abaikan */
       }
     }
-    a.duelTo(t.a.x, t.a.y);
-    b.duelTo(t.b.x, t.b.y);
-    // Hadap berhadapan (ikut sisi target masing-masing).
-    facePair(a, b, t.a, t.b);
+    // Setelah burst, keduanya berhadapan (ikut sisi target masing-masing);
+    // selama windup/burst mereka menghadap arah luncur.
+    const dirA = t.b.x >= t.a.x ? 1 : -1;
+    a.duelTo(t.a.x, t.a.y, { face: dirA });
+    b.duelTo(t.b.x, t.b.y, { face: -dirA });
     duel = {
       phase: 'approach',
       a,
@@ -191,10 +192,11 @@ export function createActivities(opts) {
       endsAt: 0,
       startedAt: now,
       forced: force,
+      whooshed: false,
     };
     sched.notifyStart();
     console.info(`[duel] mulai! (${force ? 'paksa' : 'otomatis'}${close ? ', dekat' : ''})`);
-    dashWhoosh();
+    // Musik tempur masuk sekarang; whoosh menunggu burst (sinkron gerakan).
     duelMode(true);
     return { ok: true };
   }
@@ -290,8 +292,15 @@ export function createActivities(opts) {
         abort(DUEL_RETRY_MS, `state lepas (${da.state}/${db.state})`);
         return;
       }
+      // Whoosh tepat saat salah satu mulai meluncur (bukan di awal windup).
+      if (!duel.whooshed && (da.dash === 'burst' || db.dash === 'burst')) {
+        duel.whooshed = true;
+        const ms = Math.max(da.dashBurstMs || 0, db.dashBurstMs || 0);
+        dashWhoosh(ms > 0 ? ms / 1000 : undefined);
+      }
       const near = (d, t) => Math.hypot(d.x - t.x, d.y - t.y) < DUEL_ARRIVE_PX;
-      if (near(da, duel.ta) && near(db, duel.tb)) {
+      // Tarung baru mulai setelah KEDUANYA berhenti total (burst + skid selesai).
+      if (near(da, duel.ta) && near(db, duel.tb) && !da.dash && !db.dash) {
         // Hadapkan sebelum strip duel (tanpa mirror artwork direksional).
         facePair(a, b, duel.ta, duel.tb);
         const dur = DUEL_PLAY_MS[0] + Math.random() * (DUEL_PLAY_MS[1] - DUEL_PLAY_MS[0]);
@@ -303,6 +312,7 @@ export function createActivities(opts) {
         }
         duel.phase = 'duel';
         duel.endsAt = now + dur;
+        dashImpact(); // benturan pertama: don + dentang, sejalan beat musik tempur
         console.info(`[duel] tarung! (${Math.round(dur)}ms)`);
       }
     } else {
@@ -312,11 +322,8 @@ export function createActivities(opts) {
         else abort(DUEL_RETRY_MS, `state tarung lepas (${da.state}/${db.state})`);
         return;
       }
-      // Debing pedang berkala selama tarung.
-      if (!duel.lastClash || now - duel.lastClash > 650 + Math.random() * 700) {
-        duel.lastClash = now;
-        swordClash();
-      }
+      // Dentang pedang dijadwalkan musik tempur tepat di beat (sound.js),
+      // bukan acak di sini - acak membuat bunyi kacau & tak selaras irama.
       if (now >= duel.endsAt) {
         releasePair(a, b);
         duel = null;

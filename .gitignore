@@ -1,3 +1,8 @@
 node_modules/
 .env
 *.log
+.backup-pre-dashfix/
+.integration/
+agent-dorm-fix.zip
+audio-preview/
+visual-check/

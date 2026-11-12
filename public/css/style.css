@@ -10,6 +10,8 @@
   --err: #f87171;
   --off: #9ca3af;
   --amber: #f59e0b;
+  --hud-height: 44px;
+  --hint-height: 26px;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -24,7 +26,7 @@ body {
 #hud {
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 44px;
+  height: var(--hud-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -33,7 +35,7 @@ body {
   border-bottom: 1px solid var(--line);
   z-index: 50;
 }
-.hud-left, .hud-right { display: flex; align-items: center; gap: 10px; }
+.hud-left, .hud-right { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
 .muted { color: var(--muted); }
 .mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -61,7 +63,7 @@ body {
 /* Area pandang + stage yang diskalakan */
 #viewport {
   position: fixed;
-  top: 44px; left: 0; right: 0; bottom: 26px;
+  top: var(--hud-height); left: 0; right: 0; bottom: var(--hint-height);
   overflow: hidden;
   background: var(--bg);
 }
@@ -111,6 +113,17 @@ body.show-hit .char .hit {
 @keyframes bob { 0%, 100% { margin-bottom: 0; } 50% { margin-bottom: 4px; } }
 /* Hop CSS hanya cadangan untuk agen tanpa rig (agen ber-rig tak diberi .walking). */
 .char.walking .sprite { animation: bob 0.35s infinite; }
+/* Garis kecepatan dash duel: gradien tipis di belakang badan, hanya saat burst.
+   Panjang/opasitas/arah diatur agent.js; origin kiri agar scaleX(-dir) memanjang ke belakang. */
+.char .dashfx {
+  position: absolute;
+  left: 0;
+  transform-origin: left center;
+  pointer-events: none;
+  border-radius: 999px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+  filter: blur(1px);
+}
 /* Rig jalan tiga lapis (badan + dua kaki, terpotong via clip-path). */
 .char .walkrig { will-change: transform; }
 .char .walkrig img { image-rendering: var(--img-render, auto); }
@@ -165,7 +178,9 @@ body.show-hit .char .hit {
 .bubble {
   position: absolute;
   transform: translate(-50%, -100%);
+  width: max-content;
   max-width: 240px;
+  overflow-wrap: anywhere;
   background: #fff;
   color: #111;
   font-size: 13px;
@@ -178,7 +193,7 @@ body.show-hit .char .hit {
 .bubble::after {
   content: "";
   position: absolute;
-  left: 50%;
+  left: var(--tail-x, 50%);
   bottom: -8px;
   width: 10px; height: 10px;
   background: #fff;
@@ -284,7 +299,10 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
 /* Panel demo */
 .demo-panel {
   position: fixed;
-  right: 10px; top: 52px;
+  right: 10px; top: calc(var(--hud-height) + 8px);
+  max-height: calc(100dvh - var(--hud-height) - var(--hint-height) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -296,13 +314,17 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
   width: 200px;
 }
 .demo-panel button {
+  flex-shrink: 0;
   background: #22222e; color: var(--text); border: 1px solid var(--line);
   border-radius: 6px; padding: 6px; cursor: pointer; font-size: 12px; text-align: left;
 }
 #hint {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 26px;
+  height: var(--hint-height);
+  padding: 3px 10px;
+  text-align: center;
+  line-height: 16px;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px;
   background: rgba(11, 11, 18, 0.92);
@@ -321,9 +343,15 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
   white-space: pre;
 }
 @media (max-width: 700px) {
+  :root { --hud-height: 76px; --hint-height: 44px; }
+  #hud { flex-wrap: wrap; padding: 6px 10px; gap: 4px; }
+  .hud-left, .hud-right { width: 100%; justify-content: space-between; gap: 6px; }
+  .hud-left { font-size: 14px; }
+  .hud-right { font-size: 11px; }
+  #hint { font-size: 11px; }
   .popup {
     left: 0 !important; right: 0 !important;
-    top: auto !important; bottom: 26px !important;
+    top: auto !important; bottom: var(--hint-height) !important;
     width: 100% !important; max-width: 100% !important;
     border-radius: 14px 14px 0 0;
     max-height: 60vh;

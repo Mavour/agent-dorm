@@ -2,6 +2,8 @@
  * Gelembung ucapan: maks 1 per karakter, sisanya antre, fade 5 dtk, maks 60 char.
  * Semua teks via textContent (aturan XSS).
  */
+import { layoutBubbles } from './bubble-layout.js';
+
 export function createBubbles(stage) {
   const ui = stage.uiEl;
   /** @type {Map<string, { el: HTMLElement, queue: { text: string, at: number }[], timer: number|null, anchor: () => {x:number,y:number}, topOffset: number }>} */
@@ -88,17 +90,24 @@ export function createBubbles(stage) {
     const scale = stage.scale;
     const ox = stage.toScreen(0, 0).x;
     const sw = stage.W * scale;
+    const visible = [];
     for (const [, s] of slots) {
       if (s.el.style.display === 'none') continue;
       const a = s.anchor();
       const to = typeof s.topOffset === 'function' ? s.topOffset() : s.topOffset;
       const p = stage.toScreen(a.x, a.y - (to + 10));
-      const half = s.el.offsetWidth / 2 || 0;
-      const lo = ox + Math.min(half + 4, sw / 2);
-      const hi = ox + sw - Math.min(half + 4, sw / 2);
-      s.el.style.left = Math.max(lo, Math.min(hi, p.x)) + 'px';
-      s.el.style.top = p.y + 'px';
       s.el.style.fontSize = Math.max(11, 13 * Math.max(scale, 0.5)) + 'px';
+      s.el.style.maxWidth = Math.min(240, sw - 8) + 'px';
+      visible.push({ el: s.el, x: p.x, y: p.y, width: s.el.offsetWidth, height: s.el.offsetHeight });
+    }
+    // Prioritas dari atas ke bawah tetap stabil saat karakter berjalan.
+    visible.sort((a, b) => a.y - b.y);
+    const positions = layoutBubbles(visible, { x: ox + 4, y: 4, width: sw - 8, height: ui.clientHeight - 8 });
+    for (const p of positions) {
+      p.el.style.left = p.x + p.width / 2 + 'px';
+      p.el.style.top = p.y + p.height + 'px';
+      const anchorX = visible.find((v) => v.el === p.el).x;
+      p.el.style.setProperty('--tail-x', Math.max(12, Math.min(p.width - 12, anchorX - p.x)) + 'px');
     }
   }
 

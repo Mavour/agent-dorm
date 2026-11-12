@@ -10,12 +10,12 @@ import { walkBand, blockedRect, isFree, planPath } from './path-logic.js';
 import { createActivityPlayer } from './activity-player.js';
 import { createActivityDriver, eventActivityFor } from './agent-activity.js';
 import { resolveActivities, resolveFeet, idlePauseMs, walkTargetAllowed } from './activity-logic.js';
-import { advancePhase, walkPose, lungePose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, shouldFlip } from './walk-logic.js';
+import { advancePhase, walkPose, STRIDE, AMP_RAMP, FRAME_PX, frameFromDistance, shouldFlip } from './walk-logic.js';
 import { createWalkRig } from './walk-rig.js';
+import { createDash, dashAt, dashPose } from './dash-logic.js';
 
 const SPEED = 35; // px stage per detik
-/** Pengali lari duel (dash secepat kilat ke titik temu). */
-export const DUEL_DASH = 6;
+// Dash duel: lihat dash-logic.js (windup -> burst ber-easing -> skid), BUKAN pengali jalan.
 const STATUS_COLOR = { ok: '#4ade80', warn: '#fbbf24', error: '#f87171', offline: '#9ca3af' };
 const REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Skala render ikon (relatif ukuran manifest; ubah di sini untuk mengatur besarnya).
@@ -68,6 +68,14 @@ export function createAgent(opts) {
   badge.className = 'badge';
   badge.style.display = 'none';
 
+  // Garis kecepatan dash: gradien tipis di belakang badan (hanya saat burst).
+  const dashfx = document.createElement('div');
+  dashfx.className = 'dashfx';
+  dashfx.style.display = 'none';
+  dashfx.setAttribute('aria-hidden', 'true');
+  dashfx.style.bottom = Math.round(h * 0.28) + 'px';
+  dashfx.style.height = Math.round(h * 0.34) + 'px';
+
   // Crosshair debug (?debug=1): titik jangkar ikon terhitung.
   const cross = document.createElement('div');
   cross.className = 'crosshair';
@@ -99,6 +107,7 @@ export function createAgent(opts) {
       : null;
 
   el.appendChild(shadow);
+  el.appendChild(dashfx);
   el.appendChild(img);
   el.appendChild(hit);
   el.appendChild(iconSlot);
@@ -136,7 +145,9 @@ export function createAgent(opts) {
     unacked: 0, // jumlah warn/critical belum diakui
     acked: new Set(), // id alert yang sudah diakui via popup
     dir: 1,
-    speedMul: 1, // pengali kecepatan (DUEL_DASH saat duelWalk)
+    dash: null, // rencana dash duel (createDash) atau null
+    dashPhase: null, // 'windup'|'burst'|'settle' selagi dash berjalan (dari frame terakhir)
+    dashFace: 0, // hadap setelah burst (0 = pertahankan arah luncur)
     lastFlipAt: 0, // timestamp flip hadap terakhir (histeresis 0,3 dtk)
     walkedPx: 0, // jarak tempuh kumulatif sesi jalan (frame jalan dari jarak)
     walkIndex: 0, // indeks frame "jalan" berjalan
@@ -269,16 +280,37 @@ export function createAgent(opts) {
     if (!player.showWalk('jalan', S.walkIndex, S.dir)) S.walkSrc = 'fallback';
   }
 
-  /** Jalan duel terproteksi (tak bisa disela idle/alert/busy). */
-  function startDuelWalk(to) {
+  /**
+   * Dash duel terproteksi (tak bisa disela idle/alert/busy): windup ->
+   * burst ber-easing -> skid. Rute tetap lewat waypoint anti-bos.
+   * @param {{ x: number, y: number }} to
+   * @param {{ face?: number, now?: number }} [opts] face = hadap setelah burst
+   */
+  function startDuelWalk(to, opts = {}) {
     endWalkDisplay();
-    S.speedMul = DUEL_DASH;
+    const now = typeof opts.now === 'number' ? opts.now : performance.now();
     const dest = { x: to.x, y: Math.max(to.y, band.yMin) };
     S.path = planPath({ x: S.x, y: S.y }, dest, rect, band);
     S.target = dest;
     S.prevTarget = dest;
     S.state = 'duelWalk';
+    S.dash = createDash({ x: S.x, y: S.y }, S.path, now);
+    S.dashFace = opts.face < 0 ? -1 : opts.face > 0 ? 1 : 0;
+    // Menghadap arah luncur sejak windup (siap menerkam).
+    if (S.path.length) {
+      S.dir = shouldFlip(S.path[0].x - S.x, S.path[0].y - S.y, S.dir, 0, now);
+    }
     act.noteWalk();
+  }
+
+  /** Sembunyikan garis kecepatan. */
+  function hideDashFx() {
+    if (dashfx.style.display !== 'none') dashfx.style.display = 'none';
+  }
+
+  /** Keadaan dash pada waktu now (null bila tak sedang dash). */
+  function dashSample(now) {
+    return S.dash ? dashAt(S.dash, now) : null;
   }
 
   function statusOf() {
@@ -393,18 +425,26 @@ export function createAgent(opts) {
     return act.st.cueSeq;
   }
 
-  /** Jalan duel ke titik eksplisit (lewat waypoint anti-bos, terproteksi). */
-  function duelTo(x, y) {
+  /**
+   * Dash duel ke titik eksplisit (lewat waypoint anti-bos, terproteksi).
+   * @param {number} x
+   * @param {number} y
+   * @param {{ face?: number }} [opts] face = hadap setelah tiba (1 kanan, -1 kiri)
+   */
+  function duelTo(x, y, opts = {}) {
     act.st.duelHold = true;
     // Hentikan aktivitas idle yang sedang main agar bisa berduel.
     if (S.state === 'activity' && act.st.cur && act.st.cur.kind === 'idle') act.stop();
-    startDuelWalk({ x, y });
+    startDuelWalk({ x, y }, opts);
   }
 
   /** Lepas dari duel (bersih, tak ada state macet). */
   function releaseDuel() {
     endWalkDisplay();
-    S.speedMul = 1;
+    S.dash = null;
+    S.dashPhase = null;
+    S.dashFace = 0;
+    hideDashFx();
     act.stop();
     act.st.duelHold = false;
     S.path = [];
@@ -513,26 +553,20 @@ export function createAgent(opts) {
       }
     } else if (S.state === 'duelWalk') {
       // Terproteksi: tak bisa disela idle/alert/busy/activity.
-      // Gerak sama dengan walking (lewat waypoint), tiba -> tunggu manajer.
-      const wp = S.path && S.path.length ? S.path[0] : S.target;
-      if (wp) {
-        const dx = wp.x - S.x;
-        const dy = wp.y - S.y;
-        const dist = Math.hypot(dx, dy);
-        const step = SPEED * S.speedMul * dt;
-        if (dist <= step) {
-          S.phase = advancePhase(S.phase, dist, STRIDE);
-          S.x = wp.x;
-          S.y = Math.max(wp.y, band.yMin);
-          if (S.path && S.path.length) S.path.shift();
-          if (S.path && S.path.length) S.dir = S.path[0].x - S.x < 0 ? -1 : 1;
-        } else {
-          S.phase = advancePhase(S.phase, step, STRIDE);
-          S.x += (dx / dist) * step;
-          S.y += (dy / dist) * step;
-          if (S.y < band.yMin) S.y = band.yMin;
-          S.dir = dx < 0 ? -1 : 1;
+      // Posisi dari timeline dash (jam dinding, tahan frame tertahan);
+      // tiba -> diam di titik, menunggu manajer memulai tarung.
+      const ds = dashSample(now);
+      if (ds) {
+        S.x = ds.x;
+        S.y = Math.max(ds.y, band.yMin);
+        if (ds.phase === 'burst') {
+          S.dir = shouldFlip(ds.dx, ds.dy, S.dir, 0, now);
+        } else if (S.dashFace && (ds.phase === 'settle' || ds.phase === 'done')) {
+          S.dir = S.dashFace;
         }
+      } else if (S.target) {
+        S.x = S.target.x;
+        S.y = Math.max(S.target.y, band.yMin);
       }
     } else if (S.state === 'walking' && (S.target || (S.path && S.path.length))) {
       const wp = S.path && S.path.length ? S.path[0] : S.target;
@@ -577,17 +611,26 @@ export function createAgent(opts) {
     }
     const walkOn = S.state === 'walking' && S.walkSrc === 'jalan';
 
-    // Rig jalan: hanya fallback (tanpa strip "jalan") dan duelWalk;
-    // jalan-"jalan" memakai frame samping via player (kaki menancap).
-    // aktivitas/alert/sibuk/offline menyembunyikannya langsung.
+    // Dash duel: sampel timeline sekali per frame (dipakai rig, fx, debug).
+    const dsNow = S.state === 'duelWalk' ? dashSample(now) : null;
+    const dashPosed = !!dsNow && dsNow.phase !== 'done';
+    S.dashPhase = dashPosed ? dsNow.phase : null;
+
+    // Rig: pose dash (windup/burst/skid) saat duel; jalan fallback (tanpa
+    // strip "jalan"); jalan-"jalan" memakai frame samping via player (kaki
+    // menancap). aktivitas/alert/sibuk/offline menyembunyikannya langsung.
     if (rigApi) {
       const lift = { lift: WALK_LIFT[id] ?? 7 };
-      if ((S.state === 'walking' && !walkOn) || S.state === 'duelWalk') {
+      if (dashPosed) {
+        S.amp = 0;
+        rigApi.show();
+        img.style.visibility = 'hidden';
+        rigApi.apply(S.dir, dashPose(dsNow));
+      } else if (S.state === 'walking' && !walkOn) {
         S.amp = Math.min(1, S.amp + dt / AMP_RAMP);
         rigApi.show();
         img.style.visibility = 'hidden';
-        // Duel: pose menerkam (condong + jongkok), bukan jalan santai.
-        rigApi.apply(S.dir, S.state === 'duelWalk' ? lungePose(S.phase) : walkPose(S.phase, S.amp, lift));
+        rigApi.apply(S.dir, walkPose(S.phase, S.amp, lift));
       } else if (S.state === 'idle' && S.amp > 0) {
         S.amp = Math.max(0, S.amp - dt / AMP_RAMP);
         if (S.amp <= 0) {
@@ -606,8 +649,19 @@ export function createAgent(opts) {
     // Lapisan ikon + badge mengikuti tiap frame (kedaluwarsa, arah, posisi).
     layer.tick(now, S.state === 'alert' || offline);
 
+    // Garis kecepatan: hanya selama burst (panjang ikut kecepatan sesaat).
+    if (!REDUCED && dsNow && dsNow.phase === 'burst') {
+      dashfx.style.display = 'block';
+      dashfx.style.width = Math.round(Math.min(190, dsNow.speed * 0.11)) + 'px';
+      dashfx.style.opacity = String(Math.round(Math.min(0.85, dsNow.speedNorm * 1.1) * 100) / 100);
+      dashfx.style.transform = `scaleX(${-S.dir})`;
+    } else {
+      hideDashFx();
+    }
+
     // Kelas hop CSS hanya cadangan untuk agen tanpa rig (rig tak butuh hop).
-    el.classList.toggle('walking', (S.state === 'walking' || S.state === 'duelWalk') && !REDUCED && !rigApi);
+    const dashBurst = !!dsNow && dsNow.phase === 'burst';
+    el.classList.toggle('walking', (S.state === 'walking' || dashBurst) && !REDUCED && !rigApi);
     el.style.transform = `translate3d(${S.x}px, ${S.y}px, 0)`;
     el.style.zIndex = String(Math.round(S.y));
     // Saat aktivitas main, player yang mengatur transform (flip bisa beda arah).
@@ -678,7 +732,8 @@ export function createAgent(opts) {
         amp: Math.round(S.amp * 100) / 100,
         socialUntil: S.socialUntil,
         dir: S.dir,
-        dash: S.speedMul,
+        dash: S.dashPhase,
+        dashBurstMs: S.dash ? Math.round(S.dash.burstMs) : 0,
         walk: walking ? S.walkSrc || walkCap() : walkCap(),
         walkIndex: S.walkIndex,
         walkedPx: Math.round(S.walkedPx * 100) / 100,

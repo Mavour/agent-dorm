@@ -4,9 +4,10 @@
     "height": 768
   },
   "render": {
-    "imageRendering": "pixelated",
-    "upscale": 3,
-    "nativeHeight": 76
+    "style": "hd",
+    "imageRendering": "auto",
+    "pngScale": 2,
+    "displayHeight": 230
   },
   "background": "background.jpg",
   "layout": {
@@ -20,7 +21,7 @@
       "x": 0.5,
       "y": 0.8
     },
-    "note": "Posisi = pecahan lebar/tinggi stage. y adalah posisi KAKI (anchor bawah sprite)."
+    "note": "Posisi = pecahan lebar/tinggi stage. y adalah posisi KAKI (anchor bawah sprite). Tampilkan setiap gambar dengan CSS width/height = field 'size' (PNG sengaja lebih besar agar tajam). Aktivitas: tiap gambar (sprite dasar, state bos, frame aktivitas) punya 'feet' = titik kaki dalam px tampil dari pojok kiri-atas gambar; tempatkan gambar sehingga titik kaki berada di posisi karakter. Aktivitas: tiap gambar (sprite dasar, state bos, frame aktivitas) punya 'feet' = titik kaki dalam px tampil dari pojok kiri-atas gambar; tempatkan gambar sehingga titik kaki berada di posisi karakter."
   },
   "agents": {
     "exitbot": {
@@ -28,8 +29,12 @@
       "description": "Eksekutor close otomatis posisi LP di Solana",
       "sprite": "sprites/exit-bot.png",
       "size": [
-        168,
-        222
+        171,
+        225
+      ],
+      "pngSize": [
+        342,
+        450
       ],
       "anchor": [
         0.5,
@@ -38,15 +43,36 @@
       "iconAnchor": [
         0.5,
         0.0
-      ]
+      ],
+      "feet": [
+        82.25,
+        224.0
+      ],
+      "walkRig": {
+        "bandTop": 195.5,
+        "feet": [
+          [
+            39.5,
+            82.0
+          ],
+          [
+            79.0,
+            125.5
+          ]
+        ]
+      }
     },
     "portfolio": {
       "name": "Karō",
       "description": "Pengelola portofolio, reporter pemasukan dan pengeluaran",
       "sprite": "sprites/pengelola-porto.png",
       "size": [
-        150,
-        207
+        154,
+        212
+      ],
+      "pngSize": [
+        308,
+        424
       ],
       "anchor": [
         0.5,
@@ -55,15 +81,36 @@
       "iconAnchor": [
         0.5,
         0.0
-      ]
+      ],
+      "feet": [
+        81.75,
+        211.0
+      ],
+      "walkRig": {
+        "bandTop": 184.5,
+        "feet": [
+          [
+            38.0,
+            83.5
+          ],
+          [
+            80.5,
+            126.0
+          ]
+        ]
+      }
     },
     "alert": {
       "name": "Bot Alert",
       "description": "Pencari koin bagus untuk di-LP di Solana",
       "sprite": "sprites/bot-alert.png",
       "size": [
-        222,
-        213
+        227,
+        216
+      ],
+      "pngSize": [
+        454,
+        432
       ],
       "anchor": [
         0.5,
@@ -72,15 +119,36 @@
       "iconAnchor": [
         0.5,
         0.0
-      ]
+      ],
+      "feet": [
+        116.25,
+        215.0
+      ],
+      "walkRig": {
+        "bandTop": 188.0,
+        "feet": [
+          [
+            72.5,
+            116.5
+          ],
+          [
+            113.5,
+            160.5
+          ]
+        ]
+      }
     },
     "lpwatcher": {
       "name": "LP Watcher",
       "description": "Pemantau wallet LP di Robinhood",
       "sprite": "sprites/lp-watcher.png",
       "size": [
-        171,
-        228
+        175,
+        231
+      ],
+      "pngSize": [
+        350,
+        462
       ],
       "anchor": [
         0.5,
@@ -89,7 +157,24 @@
       "iconAnchor": [
         0.5,
         0.0
-      ]
+      ],
+      "feet": [
+        86.0,
+        230.0
+      ],
+      "walkRig": {
+        "bandTop": 201.0,
+        "feet": [
+          [
+            43.0,
+            85.5
+          ],
+          [
+            82.5,
+            129.5
+          ]
+        ]
+      }
     }
   },
   "boss": {
@@ -98,50 +183,78 @@
       "idle": {
         "file": "sprites/boss/bos.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "approve": {
         "file": "sprites/boss/bos-setuju.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "think": {
         "file": "sprites/boss/bos-mikir.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "angry": {
         "file": "sprites/boss/bos-kesal.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "sip": {
         "file": "sprites/boss/bos-seruput-teh.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "shock": {
         "file": "sprites/boss/bos-kaget.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       },
       "laugh": {
         "file": "sprites/boss/bos-ketawa.png",
         "size": [
-          237,
-          249
+          241,
+          254
+        ],
+        "pngSize": [
+          482,
+          508
         ]
       }
     },
@@ -154,52 +267,450 @@
       0.0
     ],
     "size": [
-      237,
-      249
+      241,
+      254
+    ],
+    "pngSize": [
+      482,
+      508
+    ],
+    "feet": [
+      117.25,
+      251.0
     ]
   },
   "icons": {
     "alert": {
       "file": "icons/alert.png",
       "size": [
-        27,
-        75
+        29,
+        78
+      ],
+      "pngSize": [
+        58,
+        156
       ]
     },
     "sweat": {
       "file": "icons/sweat.png",
       "size": [
-        48,
-        75
+        50,
+        78
+      ],
+      "pngSize": [
+        100,
+        156
       ]
     },
     "sleep": {
       "file": "icons/sleep.png",
       "size": [
-        81,
-        69
+        84,
+        72
+      ],
+      "pngSize": [
+        168,
+        144
       ]
     },
     "think": {
       "file": "icons/think.png",
       "size": [
-        57,
-        75
+        60,
+        78
+      ],
+      "pngSize": [
+        120,
+        156
       ]
     },
     "sparkle": {
       "file": "icons/sparkle.png",
       "size": [
-        78,
-        78
+        81,
+        81
+      ],
+      "pngSize": [
+        162,
+        162
       ]
     },
     "anger": {
       "file": "icons/anger.png",
       "size": [
-        72,
-        72
+        75,
+        75
+      ],
+      "pngSize": [
+        150,
+        150
       ]
+    }
+  },
+  "activities": {
+    "alert": {
+      "jalan": {
+        "frames": [
+          "activities/alert/jalan-1.png",
+          "activities/alert/jalan-2.png",
+          "activities/alert/jalan-3.png",
+          "activities/alert/jalan-4.png"
+        ],
+        "size": [
+          193,
+          222
+        ],
+        "pngSize": [
+          386,
+          444
+        ],
+        "feet": [
+          109.75,
+          219.0
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "mengintai": {
+        "frames": [
+          "activities/alert/mengintai-1.png",
+          "activities/alert/mengintai-2.png",
+          "activities/alert/mengintai-3.png"
+        ],
+        "size": [
+          205,
+          226
+        ],
+        "pngSize": [
+          410,
+          452
+        ],
+        "feet": [
+          119.25,
+          223.0
+        ],
+        "fps": 2,
+        "mode": "pingpong",
+        "faces": "front"
+      },
+      "terompet": {
+        "frames": [
+          "activities/alert/terompet-1.png",
+          "activities/alert/terompet-2.png",
+          "activities/alert/terompet-3.png"
+        ],
+        "size": [
+          240,
+          220
+        ],
+        "pngSize": [
+          480,
+          440
+        ],
+        "feet": [
+          125.0,
+          216.5
+        ],
+        "fps": 4,
+        "mode": "once",
+        "faces": "front"
+      }
+    },
+    "boss": {
+      "kipas": {
+        "frames": [
+          "activities/boss/kipas-1.png",
+          "activities/boss/kipas-2.png",
+          "activities/boss/kipas-3.png"
+        ],
+        "size": [
+          248,
+          264
+        ],
+        "pngSize": [
+          496,
+          528
+        ],
+        "feet": [
+          122.25,
+          257.5
+        ],
+        "fps": 3,
+        "mode": "pingpong",
+        "faces": "front"
+      }
+    },
+    "exitbot": {
+      "duel": {
+        "frames": [
+          "activities/exitbot/duel-1.png",
+          "activities/exitbot/duel-2.png",
+          "activities/exitbot/duel-3.png"
+        ],
+        "size": [
+          243,
+          231
+        ],
+        "pngSize": [
+          486,
+          462
+        ],
+        "feet": [
+          84.75,
+          227.5
+        ],
+        "fps": 6,
+        "mode": "pingpong",
+        "faces": "right"
+      },
+      "jalan": {
+        "frames": [
+          "activities/exitbot/jalan-1.png",
+          "activities/exitbot/jalan-2.png",
+          "activities/exitbot/jalan-3.png",
+          "activities/exitbot/jalan-4.png"
+        ],
+        "size": [
+          139,
+          230
+        ],
+        "pngSize": [
+          278,
+          460
+        ],
+        "feet": [
+          77.0,
+          227.0
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "tebas": {
+        "frames": [
+          "activities/exitbot/tebas-1.png",
+          "activities/exitbot/tebas-2.png",
+          "activities/exitbot/tebas-3.png",
+          "activities/exitbot/tebas-4.png"
+        ],
+        "size": [
+          250,
+          254
+        ],
+        "pngSize": [
+          500,
+          508
+        ],
+        "feet": [
+          113.0,
+          250.5
+        ],
+        "fps": 8,
+        "mode": "once",
+        "faces": "front"
+      }
+    },
+    "lpwatcher": {
+      "duel": {
+        "frames": [
+          "activities/lpwatcher/duel-1.png",
+          "activities/lpwatcher/duel-2.png",
+          "activities/lpwatcher/duel-3.png"
+        ],
+        "size": [
+          300,
+          235
+        ],
+        "pngSize": [
+          600,
+          470
+        ],
+        "feet": [
+          151.25,
+          231.5
+        ],
+        "fps": 6,
+        "mode": "pingpong",
+        "faces": "left"
+      },
+      "jalan": {
+        "frames": [
+          "activities/lpwatcher/jalan-1.png",
+          "activities/lpwatcher/jalan-3.png"
+        ],
+        "size": [
+          196,
+          238
+        ],
+        "pngSize": [
+          392,
+          476
+        ],
+        "feet": [
+          93.5,
+          234.5
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "lentera": {
+        "frames": [
+          "activities/lpwatcher/lentera-1.png",
+          "activities/lpwatcher/lentera-2.png",
+          "activities/lpwatcher/lentera-3.png"
+        ],
+        "size": [
+          229,
+          235
+        ],
+        "pngSize": [
+          458,
+          470
+        ],
+        "feet": [
+          90.25,
+          231.5
+        ],
+        "fps": 3,
+        "mode": "once",
+        "faces": "front"
+      },
+      "ngantuk": {
+        "frames": [
+          "activities/lpwatcher/ngantuk-1.png",
+          "activities/lpwatcher/ngantuk-2.png"
+        ],
+        "size": [
+          179,
+          235
+        ],
+        "pngSize": [
+          358,
+          470
+        ],
+        "feet": [
+          88.0,
+          232.0
+        ],
+        "fps": 1.5,
+        "mode": "pingpong",
+        "faces": "front"
+      },
+      "tombak": {
+        "frames": [
+          "activities/lpwatcher/tombak-1.png",
+          "activities/lpwatcher/tombak-2.png",
+          "activities/lpwatcher/tombak-3.png"
+        ],
+        "size": [
+          304,
+          235
+        ],
+        "pngSize": [
+          608,
+          470
+        ],
+        "feet": [
+          98.5,
+          231.5
+        ],
+        "fps": 4,
+        "mode": "once",
+        "faces": "front"
+      }
+    },
+    "portfolio": {
+      "jalan": {
+        "frames": [
+          "activities/portfolio/jalan-1.png",
+          "activities/portfolio/jalan-2.png",
+          "activities/portfolio/jalan-3.png",
+          "activities/portfolio/jalan-4.png"
+        ],
+        "size": [
+          123,
+          219
+        ],
+        "pngSize": [
+          246,
+          438
+        ],
+        "feet": [
+          61.5,
+          215.5
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "lapor": {
+        "frames": [
+          "activities/portfolio/lapor-1.png",
+          "activities/portfolio/lapor-2.png",
+          "activities/portfolio/lapor-3.png"
+        ],
+        "size": [
+          139,
+          216
+        ],
+        "pngSize": [
+          278,
+          432
+        ],
+        "feet": [
+          78.25,
+          213.0
+        ],
+        "fps": 3,
+        "mode": "once",
+        "faces": "front"
+      },
+      "mencatat": {
+        "frames": [
+          "activities/portfolio/mencatat-1.png",
+          "activities/portfolio/mencatat-2.png",
+          "activities/portfolio/mencatat-3.png"
+        ],
+        "size": [
+          135,
+          216
+        ],
+        "pngSize": [
+          270,
+          432
+        ],
+        "feet": [
+          76.0,
+          213.0
+        ],
+        "fps": 3,
+        "mode": "pingpong",
+        "faces": "front"
+      },
+      "soroban": {
+        "frames": [
+          "activities/portfolio/soroban-1.png",
+          "activities/portfolio/soroban-2.png",
+          "activities/portfolio/soroban-3.png"
+        ],
+        "size": [
+          128,
+          216
+        ],
+        "pngSize": [
+          256,
+          432
+        ],
+        "feet": [
+          68.5,
+          213.0
+        ],
+        "fps": 3,
+        "mode": "pingpong",
+        "faces": "front"
+      }
     }
   }
 }

@@ -97,7 +97,7 @@ globalThis.Image = class {
   }
 };
 
-const { createAgent, DUEL_DASH } = await import('../public/js/agent.js');
+const { createAgent } = await import('../public/js/agent.js');
 const { createActivities } = await import('../public/js/activities.js');
 
 const flush = () => new Promise((r) => setTimeout(r, 10));
@@ -119,12 +119,13 @@ const jalanDef = () => ({
   faces: 'right',
 });
 
-function makeWorld() {
+function makeWorld(withRig = false) {
+  const rigOf = (bandTop, f1, f2) => (withRig ? { bandTop, feet: [f1, f2] } : null);
   const doc = globalThis.document;
   const manifest = {
     agents: {
-      exitbot: { name: 'ExitBot', size: [171, 225], feet: [85, 224], sprite: 'sprites/exit-bot.png', walkRig: null },
-      lpwatcher: { name: 'LP Watcher', size: [180, 235], feet: [90, 234], sprite: 'sprites/lp-watcher.png', walkRig: null },
+      exitbot: { name: 'ExitBot', size: [171, 225], feet: [85, 224], sprite: 'sprites/exit-bot.png', walkRig: rigOf(195.5, [39.5, 82], [79, 125.5]) },
+      lpwatcher: { name: 'LP Watcher', size: [180, 235], feet: [90, 234], sprite: 'sprites/lp-watcher.png', walkRig: rigOf(201, [43, 85.5], [82.5, 129.5]) },
     },
     activities: {
       exitbot: { jalan: jalanDef(), duel: duelDef('right') },
@@ -180,24 +181,74 @@ describe('duel e2e: paksa mulai sampai tarung selesai', () => {
   });
 });
 
-describe('duel e2e: dash secepat kilat lalu normal lagi', () => {
-  it('duelWalk 6x lipat, releaseDuel mengembalikan 1x', async () => {
-    assert.equal(DUEL_DASH, 6);
+describe('duel e2e: dash natural (windup -> burst ber-easing -> skid)', () => {
+  it('windup diam, burst melesat bervariasi, skid berhenti tepat di titik', async () => {
     const { agents } = makeWorld();
     await flush();
     const [a] = agents;
+    const t0 = performance.now();
     const p0 = a.debug();
     a.duelTo(1200, 690);
-    assert.equal(a.debug().dash, DUEL_DASH);
-    a.frame(performance.now(), 0.05);
-    const p1 = a.debug();
-    assert.equal(p1.state, 'duelWalk');
-    const moved = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-    // debug() membulatkan koordinat (±1px); yang penting jauh di atas jalan normal (1,75px).
-    assert.ok(Math.abs(moved - 35 * DUEL_DASH * 0.05) <= 1, `gerak ${moved}, harusnya ~${35 * DUEL_DASH * 0.05}`);
-    assert.ok(moved > 35 * 0.05 + 1, 'dash harus jauh lebih cepat dari jalan biasa');
+    const step = 16;
+    const phases = [];
+    const xs = [];
+    let prev = { x: p0.x, y: p0.y };
+    let maxStep = 0;
+    const speeds = [];
+    for (let el = 0; el <= 1600; el += step) {
+      a.frame(t0 + el, step / 1000);
+      const d = a.debug();
+      if (phases[phases.length - 1] !== d.dash) phases.push(d.dash);
+      xs.push(d.x);
+      const mv = Math.hypot(d.x - prev.x, d.y - prev.y);
+      if (d.dash === 'burst') speeds.push(mv);
+      maxStep = Math.max(maxStep, mv);
+      prev = d;
+    }
+    // Urutan babak: windup -> burst -> settle -> (null = selesai)
+    assert.deepEqual(phases, ['windup', 'burst', 'settle', null]);
+    // Windup: belum bergeser sama sekali.
     a.releaseDuel();
-    assert.equal(a.debug().dash, 1);
+    const b = makeWorld();
+    await flush();
+    const [c] = b.agents;
+    const q0 = c.debug();
+    const s0 = performance.now();
+    c.duelTo(1200, 690);
+    for (let el = 0; el < 200; el += 16) c.frame(s0 + el, 0.016);
+    assert.equal(c.debug().x, q0.x, 'bergerak saat windup');
+    assert.equal(c.debug().dash, 'windup');
+    // Burst: kecepatan sangat bervariasi (bukan laju konstan) dan tak teleport.
+    assert.ok(Math.max(...speeds) > 2 * Math.min(...speeds.filter((v) => v > 0)), 'kecepatan terlalu rata');
+    assert.ok(maxStep < 60, `lompatan ${maxStep}px/frame`);
+    // Tiba persis di tujuan.
+    const end = a.debug();
+    assert.ok(Math.abs(end.x - 1200) <= 1 && Math.abs(end.y - 690) <= 1, `berhenti di ${end.x},${end.y}`);
+  });
+  it('REGRESI: bukan jalan dipercepat - dash 1 frame pertama setelah windup tak melompat 6x jalan', async () => {
+    const { agents } = makeWorld();
+    await flush();
+    const [a] = agents;
+    const t0 = performance.now();
+    a.duelTo(1200, 690);
+    a.frame(t0 + 0, 0.016);
+    const before = a.debug();
+    assert.equal(before.dash, 'windup');
+    a.frame(t0 + 230, 0.016); // sudah masuk burst, awal (kecepatan masih rendah)
+    const after = a.debug();
+    assert.equal(after.dash, 'burst');
+    assert.ok(after.x - before.x < 6, 'awal burst harus berakselerasi mulus');
+  });
+  it('releaseDuel membersihkan dash', async () => {
+    const { agents } = makeWorld();
+    await flush();
+    const [a] = agents;
+    a.duelTo(1200, 690);
+    a.frame(performance.now() + 300, 0.016);
+    assert.equal(a.debug().state, 'duelWalk');
+    a.releaseDuel();
+    assert.equal(a.debug().dash, null);
+    assert.notEqual(a.debug().state, 'duelWalk');
   });
 });
 
@@ -238,5 +289,38 @@ describe('duel e2e: sudah dekat -> langsung tarung', () => {
     }
     assert.ok(fought, 'sudah dekat tapi tak kunjung tarung');
     assert.ok(ticks < 150, `kelamaan: ${ticks} tick untuk mulai tarung`);
+  });
+});
+
+describe('duel e2e: dengan walk-rig (konfigurasi app asli)', () => {
+  it('duel penuh: rig tampil selama dash lalu tersembunyi, sprite kembali, garis kecepatan hanya saat burst', async () => {
+    const { agents, activities } = makeWorld(true);
+    await flush();
+    const [a, b] = agents;
+    assert.deepEqual(activities.forceStart(), { ok: true });
+    let now = performance.now();
+    const seen = new Set();
+    let fxShown = false;
+    let fightAt = -1;
+    const fxNodes = globalThis.document._all.filter((e) => e.className === 'dashfx').slice(-2); // milik world ini
+    assert.equal(fxNodes.length, 2);
+    for (let i = 0; i < 400 && fightAt < 0; i++) {
+      now += 16;
+      a.frame(now, 0.016);
+      b.frame(now, 0.016);
+      activities.tick(now);
+      seen.add(a.debug().dash);
+      if (fxNodes.some((n) => n.style.display === 'block')) fxShown = true;
+      if (activities.info().phase === 'fighting') fightAt = i;
+    }
+    assert.ok(fightAt >= 0, 'tak pernah tarung');
+    assert.ok(seen.has('windup') && seen.has('burst') && seen.has('settle'), `babak: ${[...seen]}`);
+    assert.ok(fxShown, 'garis kecepatan tak pernah tampil');
+    // Total dari mulai sampai tarung: sekitar 1 dtk (bukan jalan 5+ dtk).
+    assert.ok(fightAt * 16 < 1800, `kelamaan: ${fightAt * 16}ms`);
+    // Saat tarung: tak ada garis kecepatan tersisa, state dash bersih.
+    for (const n of fxNodes) assert.equal(n.style.display, 'none');
+    assert.equal(a.debug().dash, null);
+    assert.equal(b.debug().dash, null);
   });
 });
