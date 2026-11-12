@@ -8,6 +8,7 @@ import fastifyBasicAuth from '@fastify/basic-auth';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { loadConfig, printConfigTable } from './config.js';
 import { createStore } from './store.js';
 import { buildAdapters } from './adapters/index.js';
@@ -40,7 +41,51 @@ if (config.basicUser && config.basicPass) {
       if (user !== config.basicUser || pass !== config.basicPass) throw new Error('Unauthorized');
     },
   });
-  app.addHook('onRequest', app.basicAuth);
+  // Browser HTTP and WebSocket auth caches can be separate. Exchange the
+  // authenticated HTTP session for a short-lived, single-use WS ticket.
+  const wsTickets = new Map();
+  app.get('/api/ws-ticket', async (_req, reply) => {
+    const now = Date.now();
+    for (const [ticket, expires] of wsTickets) if (expires <= now) wsTickets.delete(ticket);
+    if (wsTickets.size >= 256) wsTickets.delete(wsTickets.keys().next().value);
+    const ticket = randomBytes(32).toString('base64url');
+    wsTickets.set(ticket, now + 30000);
+    reply.header('Cache-Control', 'no-store');
+    return { ticket };
+  });
+  app.addHook('onRequest', (req, reply, done) => {
+    const upgrade = req.headers.upgrade?.toLowerCase() === 'websocket';
+    const denyUpgrade = () => {
+      const error = new Error('Unauthorized WebSocket');
+      error.statusCode = 403;
+      done(error);
+    };
+    if (upgrade) {
+      // Reject cross-origin browser upgrades, even if HTTP credentials are cached.
+      if (req.headers.origin) {
+        try {
+          const origin = new URL(req.headers.origin);
+          if (!['http:', 'https:'].includes(origin.protocol) || origin.origin !== new URL(`${origin.protocol}//${req.headers.host}`).origin) return denyUpgrade();
+        } catch { return denyUpgrade(); }
+      }
+      const protocols = (req.headers['sec-websocket-protocol'] || '').split(',').map((v) => v.trim());
+      const ticket = protocols[0] === 'agent-dorm' && protocols.length === 2 ? protocols[1] : null;
+      if (ticket) {
+        const expires = wsTickets.get(ticket);
+        wsTickets.delete(ticket);
+        if (expires > Date.now()) return done();
+      }
+      // No Basic challenge on upgrades: a browser may otherwise prompt twice.
+      if (!req.headers.authorization) return denyUpgrade();
+    }
+    app.basicAuth(req, reply, (error) => {
+      if (error && upgrade) {
+        reply.removeHeader('WWW-Authenticate');
+        error.statusCode = 403;
+      }
+      done(error);
+    });
+  });
 } else if (config.host !== '127.0.0.1' && config.host !== 'localhost' && config.host !== '::1') {
   console.warn('⚠️  PERINGATAN KERAS: HOST bukan loopback dan basic auth TIDAK diset. Siapa pun bisa membuka dashboard ini!');
 }

@@ -44,11 +44,19 @@ export function connectSocket(store, hud) {
     }
   }
 
-  function connect() {
+  async function connect() {
     if (!alive) return;
     setConn('reconnecting');
     try {
-      ws = new WebSocket(url);
+      const response = await fetch('/api/ws-ticket', { cache: 'no-store' });
+      let ticket = null;
+      if (response.ok) {
+        const data = await response.json();
+        if (typeof data.ticket !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(data.ticket)) throw new Error('Invalid WebSocket ticket');
+        ticket = data.ticket;
+      } else if (response.status !== 404) throw new Error('WebSocket authorization failed');
+      if (!alive) return;
+      ws = ticket ? new WebSocket(url, ['agent-dorm', ticket]) : new WebSocket(url);
     } catch {
       retry();
       return;
