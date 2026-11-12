@@ -275,6 +275,23 @@ body.show-hit .char .hit {
 .rangebar.out .fill { background: #7f1d1d; }
 .rangebar.out .mark { background: var(--err); }
 .card { background: #1c1c28; border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 13px; }
+.alert-candidate { padding: 12px; border: 1px solid var(--line); }
+.candidate-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.candidate-head strong { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.candidate-head .chip { flex-shrink: 0; }
+.candidate-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 12px 0; }
+.candidate-metrics dt { color: var(--muted); font-size: 11px; }
+.candidate-metrics dd { margin: 3px 0 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.candidate-reasons, .candidate-risks { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.candidate-reasons { color: var(--muted); }
+.candidate-risks { margin-top: 4px; }
+.candidate-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; }
+.candidate-links { display: flex; gap: 8px; flex-shrink: 0; }
+.market-link { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: #14141d; border: 1px solid var(--line); border-radius: 9px; }
+.market-link img { display: block; object-fit: contain; }
+.market-link:hover, .market-link:focus-visible { border-color: var(--ok); background: #25332c; }
+.market-link:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
+.market-link[aria-disabled="true"] { opacity: 0.35; }
 .tabs { display: flex; gap: 6px; margin: 8px 0; }
 .tabs button {
   flex: 1; background: #22222e; color: var(--text);
