@@ -20,7 +20,7 @@ function buildApp() {
     demoControls: true,
     agents: { exitbot: { mode: 'dummy' } },
   };
-  registerRoutes(app, { config, store, boss });
+  registerRoutes(app, { config, store, boss, conversation: { list: () => [], close: async () => {} } });
   return app;
 }
 

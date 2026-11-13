@@ -133,6 +133,10 @@ export function bubbleForEvent(event) {
       return `Tebas! ${d.pair || '?'} ditutup (${sign}$${Math.abs(pnl).toFixed(2)})`;
     }
     case 'report_ready':
+      if (d.kind === 'yapping' && typeof d.text === 'string') {
+        const text = d.text.replace(/\s+/g, ' ').trim();
+        return text.length > 150 ? text.slice(0, 147) + '…' : text;
+      }
       return 'Rapor harian sudah siap.';
     case 'agent_offline':
       return 'Zzz... aku terputus.';

@@ -37,6 +37,7 @@ async function main() {
   if (!manifest || !state) return;
 
   window.__ADVISOR_MODE__ = state.advisorMode || 'rules';
+  window.__ADVISOR_CONFIGURED__ = !!state.advisorConfigured;
   window.__DEMO_CONTROLS__ = !!state.demoControls;
   const logout = document.getElementById('logout-btn');
   if (logout && state.authEnabled) {

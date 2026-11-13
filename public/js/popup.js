@@ -20,7 +20,7 @@ export function createPopup(opts) {
   let openId = null;
   /** @type {HTMLElement|null} */
   let box = null;
-  /** @type {{ foot?: HTMLElement, pill?: HTMLElement, alertsWrap?: HTMLElement, body?: HTMLElement }|null} */
+  /** @type {{ foot?: HTMLElement, pill?: HTMLElement, alertsWrap?: HTMLElement, body?: HTMLElement, update?: Function }|null} */
   let refs = null;
 
   /** Helper bikin elemen teks aman. */
@@ -62,7 +62,7 @@ export function createPopup(opts) {
     head.appendChild(modeChip);
     const llmChip = t(
       'span',
-      agentId === 'portfolio' ? (window.__ADVISOR_MODE__ === 'llm' ? 'LLM aktif' : 'rule-based') : 'tanpa LLM',
+      agentId === 'portfolio' ? (window.__ADVISOR_MODE__ === 'llm' ? 'OpenRouter' : 'rule-based') : 'tanpa LLM',
       'chip chip-gray',
     );
     head.appendChild(llmChip);
@@ -88,14 +88,14 @@ export function createPopup(opts) {
     // Isi per agen
     const body = document.createElement('div');
     const render = RENDER[agentId];
-    if (render) render(body, snap, { t, el: mkEl });
+    const update = render?.(body, snap, { t, el: mkEl });
     box.appendChild(body);
 
     const foot = document.createElement('footer');
     foot.className = 'muted mono';
     foot.textContent = `Sinkron: ${clockOf(snap.updatedAt)}`;
     box.appendChild(foot);
-    refs = { foot, pill, alertsWrap, body };
+    refs = { foot, pill, alertsWrap, body, update };
 
     root.appendChild(box);
     place(anchorPos);
@@ -149,6 +149,12 @@ export function createPopup(opts) {
     refs.pill.className = 'status-pill st-' + snap.status;
     fillAlerts(refs.alertsWrap, snap.alerts || []);
     refs.foot.textContent = `Sinkron: ${clockOf(snap.updatedAt)}`;
+    // Portfolio refreshes data without discarding its selected tab or chat.
+    if (openId === 'portfolio' && refs.update) {
+      const st = box.scrollTop;
+      refs.update(snap);
+      box.scrollTop = st;
+    }
     // Body: render ulang kecuali portfolio; jaga scroll
     if (openId !== 'portfolio') {
       const st = box.scrollTop;

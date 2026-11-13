@@ -49,9 +49,9 @@ export function loadConfig() {
     demoSpeed: num(env.DEMO_SPEED, 1),
     agents,
     advisorMode: ['rules', 'llm'].includes(advisorMode) ? advisorMode : 'rules',
-    anthropicKey: env.ANTHROPIC_API_KEY || '',
-    anthropicModel: env.ANTHROPIC_MODEL || '',
-    advisorMaxTokens: num(env.ADVISOR_MAX_TOKENS, 600),
+    openrouterKey: env.OPENROUTER_API_KEY || '',
+    openrouterModel: env.OPENROUTER_MODEL || 'nvidia/nemotron-3.5-lightning:free',
+    advisorMaxTokens: num(env.ADVISOR_MAX_TOKENS, 1536),
     version: '0.1.0',
   };
 }

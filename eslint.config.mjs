@@ -24,6 +24,7 @@ const browserGlobals = {
 const nodeGlobals = {
   ...browserGlobals,
   AbortController: 'readonly',
+  AbortSignal: 'readonly',
   process: 'readonly',
   Buffer: 'readonly',
   globalThis: 'readonly',

@@ -4,14 +4,13 @@
  * Terbit pada snapshot pertama setelah boot dan tiap pergantian hari/nada,
  * dedupe by id report-YYYY-MM-DD-<tone> agar nada selalu dari fungsi yang sama.
  */
-import { getAdvisor } from './advisor/index.js';
+import { dailyReport } from './advisor/rules-advisor.js';
 
 /**
  * @param {any} store
- * @param {{ advisorMode?: string, anthropicKey?: string }} [opts]
  * @returns {() => void} unsubscribe
  */
-export function startReportScheduler(store, opts = {}) {
+export function startReportScheduler(store) {
   let lastId = null;
   return store.subscribe((msg) => {
     if (msg.type !== 'agent_update' || msg.agentId !== 'portfolio') return;
@@ -19,7 +18,7 @@ export function startReportScheduler(store, opts = {}) {
     if (!snap || snap.status === 'offline') return;
     let rep;
     try {
-      rep = getAdvisor({ advisorMode: opts.advisorMode, anthropicKey: opts.anthropicKey }).dailyReport(snap);
+      rep = dailyReport(snap);
     } catch {
       return;
     }

@@ -1,3 +1,5 @@
+import { portfolioSpending } from '../../../public/js/portfolio-data.js';
+
 /**
  * Satu-satunya sumber kebenaran nada pengeluaran (hemat vs boros).
  * Fungsi murni: hanya membaca snapshot portfolio + tanggal hari ini.
@@ -15,18 +17,5 @@
  * @returns {{ tone: 'good'|'neutral'|'warn', today: number, avg7: number, projected: number, monthlyBudget: number }}
  */
 export function spendingTone(snapshot) {
-  const m = snapshot.metrics;
-  const cf = m.cashflow;
-  const today = cf.todayExpenseUsd;
-  const avg7 = cf.last7dExpenseUsd / 7;
-  const now = new Date();
-  const daysElapsed = Math.max(1, now.getDate());
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const projected = (m.budget.monthSpentUsd / daysElapsed) * daysInMonth;
-  const monthlyBudget = m.budget.monthlyUsd;
-  const ratio = avg7 > 0 ? today / avg7 : 1;
-  let tone = 'neutral';
-  if (ratio > 1.3 || projected > monthlyBudget) tone = 'warn';
-  else if (ratio < 0.7) tone = 'good';
-  return { tone, today, avg7, projected, monthlyBudget };
+  return portfolioSpending(snapshot);
 }

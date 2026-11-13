@@ -52,7 +52,7 @@ it('Dorm form login protects data and authorizes single-use WebSocket tickets', 
     const login = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'fixture', password: 'fixture-password', remember: true }) });
     assert.equal(login.status, 200);
     const auth = { Cookie: login.headers.get('set-cookie').split(';')[0] };
-    for (const route of ['/api/state', '/assets/assets.json', '/api/ws-ticket']) {
+    for (const route of ['/api/state', '/api/portfolio/history', '/assets/assets.json', '/api/ws-ticket']) {
       const missing = await fetch(base + route);
       assert.equal(missing.status, 401);
       assert.equal(missing.headers.get('www-authenticate'), null);

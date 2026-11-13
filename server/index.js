@@ -75,7 +75,7 @@ registerWs(app, { store, boss, director, auth });
 // Mode http/file tidak mengirim report_ready: terbitkan dari advisor
 // (nada selalu dari fungsi yang sama). Mode dummy punya jadwal sendiri.
 if (config.agents.portfolio.mode !== 'dummy') {
-  startReportScheduler(store, { advisorMode: config.advisorMode, anthropicKey: config.anthropicKey });
+  startReportScheduler(store);
 }
 
 // Global error handler: JSON {error} tanpa stack
