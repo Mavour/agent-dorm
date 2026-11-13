@@ -24,14 +24,35 @@ console.info(`[dorm] build ${window.__BUILD__}`);
 async function main() {
   const [manifest, state] = await Promise.all([
     fetch('/api/manifest').then((r) => {
+      if (r.status === 401) { location.replace('/login'); return null; }
       if (!r.ok) throw new Error('Manifest tidak tersedia');
       return r.json();
     }),
-    fetch('/api/state').then((r) => r.json()),
+    fetch('/api/state').then((r) => {
+      if (r.status === 401) { location.replace('/login'); return null; }
+      if (!r.ok) throw new Error('Status tidak tersedia');
+      return r.json();
+    }),
   ]);
+  if (!manifest || !state) return;
 
   window.__ADVISOR_MODE__ = state.advisorMode || 'rules';
   window.__DEMO_CONTROLS__ = !!state.demoControls;
+  const logout = document.getElementById('logout-btn');
+  if (logout && state.authEnabled) {
+    logout.hidden = false;
+    logout.addEventListener('click', async () => {
+      logout.disabled = true;
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        if (!response.ok && response.status !== 401) throw new Error('Logout failed');
+        location.replace('/login');
+      } catch {
+        logout.disabled = false;
+        logout.textContent = 'Coba keluar lagi';
+      }
+    });
+  }
 
   const store = createClientStore();
   if (state.agents) store.setAll(state.agents);

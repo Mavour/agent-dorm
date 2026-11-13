@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { request } from 'node:http';
 
-it('Basic Auth challenges browser login and accepts only valid credentials', { timeout: 15_000 }, async () => {
+it('Dorm form login protects data and authorizes single-use WebSocket tickets', { timeout: 15_000 }, async () => {
   const root = fileURLToPath(new URL('..', import.meta.url));
   const prefix = path.join(tmpdir(), 'dorm-auth-');
   const cwd = await mkdtemp(prefix);
@@ -20,6 +20,7 @@ it('Basic Auth challenges browser login and accepts only valid credentials', { t
   await new Promise((resolve) => socket.close(resolve));
   await mkdir(path.join(cwd, 'public'));
   await copyFile(path.join(root, 'public/index.html'), path.join(cwd, 'public/index.html'));
+  await copyFile(path.join(root, 'public/login.html'), path.join(cwd, 'public/login.html'));
   const child = spawn(process.execPath, [path.join(root, 'server/index.js')], {
     cwd,
     env: { ...process.env, HOST: '127.0.0.1', PORT: String(port), LOG_LEVEL: 'info',
@@ -40,19 +41,26 @@ it('Basic Auth challenges browser login and accepts only valid credentials', { t
       child.once('error', (error) => { clearTimeout(timer); reject(error); });
       child.once('exit', () => { clearTimeout(timer); reject(new Error('Server exited before test completed')); });
     });
-    for (const route of ['/', '/api/state', '/assets/assets.json', '/api/ws-ticket']) {
-      const url = `http://127.0.0.1:${port}${route}`;
-      const missing = await fetch(url);
+    const base = `http://127.0.0.1:${port}`;
+    const landing = await fetch(base, { redirect: 'manual' });
+    assert.equal(landing.status, 302);
+    assert.equal(landing.headers.get('location'), '/login');
+    assert.match(await (await fetch(base + '/login')).text(), /Masuk ke Dorm/);
+    const wrong = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'fixture', password: 'wrong' }) });
+    assert.equal(wrong.status, 401);
+    assert.equal(wrong.headers.get('www-authenticate'), null);
+    const login = await fetch(base + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'fixture', password: 'fixture-password', remember: true }) });
+    assert.equal(login.status, 200);
+    const auth = { Cookie: login.headers.get('set-cookie').split(';')[0] };
+    for (const route of ['/api/state', '/assets/assets.json', '/api/ws-ticket']) {
+      const missing = await fetch(base + route);
       assert.equal(missing.status, 401);
-      assert.match(missing.headers.get('www-authenticate') || '', /^Basic realm="Agent Dorm"/);
-      const wrong = await fetch(url, { headers: { Authorization: `Basic ${Buffer.from('fixture:wrong').toString('base64')}` } });
-      assert.equal(wrong.status, 401);
-      const valid = await fetch(url, { headers: { Authorization: `Basic ${Buffer.from('fixture:fixture-password').toString('base64')}` } });
+      assert.equal(missing.headers.get('www-authenticate'), null);
+      const valid = await fetch(base + route, { headers: auth });
       assert.equal(valid.status, 200);
       await valid.arrayBuffer();
     }
-    const base = `http://127.0.0.1:${port}`;
-    const auth = { Authorization: `Basic ${Buffer.from('fixture:fixture-password').toString('base64')}` };
+    assert.equal((await fetch(base, { headers: auth })).status, 200);
     async function ticket() {
       const response = await fetch(`${base}/api/ws-ticket`, { headers: auth });
       assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -87,7 +95,14 @@ it('Basic Auth challenges browser login and accepts only valid credentials', { t
     const crossOriginTicket = await ticket();
     assert.equal((await upgrade(crossOriginTicket, 'https://other.example')).status, 403);
     assert.equal((await upgrade(crossOriginTicket)).status, 101);
-    assert.equal((await upgrade(undefined, base, auth.Authorization)).status, 101, 'existing Basic-authenticated clients remain supported');
+    const live = new WebSocket(`ws://127.0.0.1:${port}/ws`, ['agent-dorm', await ticket()]);
+    await new Promise((resolve, reject) => { live.addEventListener('open', resolve, { once: true }); live.addEventListener('error', reject, { once: true }); });
+    const closed = new Promise((resolve) => live.addEventListener('close', resolve, { once: true }));
+    const staleTicket = await ticket();
+    assert.equal((await fetch(base + '/api/auth/logout', { method: 'POST', headers: auth })).status, 200);
+    assert.equal((await closed).code, 1008, 'logout closes the live socket');
+    assert.equal((await upgrade(staleTicket)).status, 403, 'logout revokes already-issued tickets');
+    assert.equal((await fetch(base + '/api/state', { headers: auth })).status, 401);
     const badAuth = await upgrade(undefined, base, `Basic ${Buffer.from('fixture:wrong').toString('base64')}`);
     assert.equal(badAuth.status, 403);
     assert.equal(badAuth.headers['www-authenticate'], undefined);

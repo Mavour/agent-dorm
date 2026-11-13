@@ -1,0 +1,71 @@
+:root { color-scheme: dark; --gold: #f4c477; --text: #f5f0e8; --muted: #aaa2b5; --line: #39313d; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100svh; padding: 40px 24px; display: grid; place-items: center; background: radial-gradient(ellipse at 20% 20%, #30202e 0%, transparent 55%), #0d0c13; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+button, input { font: inherit; }
+.login-shell { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.9fr); width: min(1100px, 100%); min-height: 640px; overflow: hidden; border: 1px solid #4a3942; border-radius: 24px; box-shadow: 0 30px 100px #0008; background: #17131e; }
+.dorm-scene { position: relative; isolation: isolate; display: flex; flex-direction: column; overflow: hidden; min-height: 640px; padding: 34px; }
+.room, .scene-shade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; }
+.room { object-fit: cover; object-position: 43% center; image-rendering: auto; }
+.scene-shade { background: linear-gradient(180deg, #130e19bb 0%, #130e1988 46%, #130e190d 67%, #130e19ed 100%); }
+.brand { display: flex; align-items: center; gap: 12px; width: fit-content; color: var(--text); text-decoration: none; font-size: 20px; font-weight: 750; letter-spacing: -0.5px; }
+.brand-mark { display: grid; place-items: center; height: 44px; width: 44px; border: 1px solid #e4b26b73; border-radius: 12px; background: #291f23c9; color: var(--gold); font-size: 25px; font-weight: 400; }
+.brand small { display: block; margin-top: 4px; color: #c3b6ac; font-size: 9px; font-weight: 500; letter-spacing: 3px; }
+.scene-copy { margin-top: 72px; }
+.eyebrow { color: var(--gold); font-size: 9px; font-weight: 650; letter-spacing: 2px; }
+h1 { margin: 18px 0; font-size: clamp(36px, 4.2vw, 52px); line-height: 1.12; font-weight: 650; letter-spacing: -2px; text-shadow: 0 2px 20px #0008; }
+.scene-copy p { font-size: 13px; color: #ded1c7; line-height: 1.8; text-shadow: 0 2px 8px #000; }
+.residents { display: flex; align-items: flex-end; justify-content: center; gap: 0; margin: auto -18px 22px; padding-top: 18px; filter: drop-shadow(0 12px 12px #0009); }
+.residents img { min-width: 0; width: 19%; max-height: 155px; object-fit: contain; }
+.residents img.boss { width: 22%; max-height: 172px; }
+.scene-footer { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #d1c0af; }
+.lantern-dot, .welcome-tag span { height: 5px; width: 5px; flex-shrink: 0; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px #eab66b88; }
+.login-panel { display: flex; flex-direction: column; justify-content: center; padding: 48px 40px 24px; background: linear-gradient(155deg, #211a28, #17131e 55%); }
+.welcome-tag { display: flex; align-items: center; gap: 8px; color: var(--gold); font-size: 9px; font-weight: 650; letter-spacing: 1.6px; }
+h2 { margin: 18px 0 8px; font-size: 30px; font-weight: 650; letter-spacing: -1px; }
+.intro { margin: 0 0 30px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+form > label { display: block; margin: 0 0 9px; font-size: 12px; font-weight: 600; }
+input[type="text"], input[type="password"] { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 9px; background: #120f18; color: var(--text); font-size: 16px; outline: none; }
+input::placeholder { color: #746b80; font-size: 13px; }
+input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px #f4c47715; }
+#username { margin-bottom: 21px; }
+.password-field { position: relative; }
+.password-field input { padding-right: 66px; }
+#toggle-password { position: absolute; right: 6px; top: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: #c5b9ce; font-size: 11px; cursor: pointer; }
+#toggle-password:hover { color: var(--gold); }
+.remember { display: flex; align-items: flex-start; gap: 10px; margin: 23px 0 26px; cursor: pointer; font-size: 12px; line-height: 1.4; }
+.remember input { margin: 1px 0 0; height: 17px; width: 17px; accent-color: var(--gold); }
+.remember small { display: block; margin-top: 3px; color: #92899e; font-size: 11px; font-weight: 400; }
+.submit { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid #ffe1ae; border-radius: 9px; background: linear-gradient(120deg, #f4cc8d, #e6ad60); color: #2a1b15; font-size: 13px; font-weight: 750; cursor: pointer; box-shadow: 0 4px 20px #e3a65c12; }
+.submit:hover { background: #ffdaa0; }
+.submit:disabled { opacity: 0.65; cursor: wait; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.account-note { margin: 16px 0 0; text-align: center; color: #93889c; font-size: 10px; }
+.login-error { padding: 11px 12px; margin: 0 0 16px; border: 1px solid #a5484866; border-radius: 8px; background: #632a2a33; color: #ffb6ae; font-size: 12px; line-height: 1.5; }
+.panel-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 54px; padding-top: 17px; border-top: 1px solid #332a3b; color: #857b91; font-size: 9px; }
+.panel-footer > span:first-child { letter-spacing: 1.7px; }
+noscript { color: #ffb6ae; font-size: 12px; }
+@media (max-width: 800px) {
+  body { padding: 24px; }
+  .login-shell { grid-template-columns: minmax(0, 1fr); width: min(460px, 100%); border-radius: 20px; min-height: 0; }
+  .dorm-scene { min-height: 230px; padding: 24px; }
+  .scene-copy { margin-top: 25px; }
+  h1 { margin: 10px 0 0; font-size: 32px; letter-spacing: -1.2px; }
+  h1 br { display: none; }
+  .scene-copy p, .scene-footer, .residents { display: none; }
+  .scene-shade { background: linear-gradient(180deg, #130e1955, #17131e); }
+  .login-panel { padding: 24px 28px; }
+  .welcome-tag { font-size: 8px; }
+  h2 { margin-top: 14px; font-size: 27px; }
+  .intro { margin-bottom: 25px; }
+  .panel-footer { margin-top: 28px; }
+}
+@media (max-width: 420px) {
+  body { padding: 14px; }
+  .dorm-scene { min-height: 190px; padding: 20px; }
+  .brand { font-size: 18px; }
+  .brand-mark { height: 38px; width: 38px; font-size: 22px; }
+  .scene-copy { margin-top: 22px; }
+  .eyebrow { font-size: 8px; letter-spacing: 1px; }
+  h1 { font-size: 26px; }
+  .login-panel { padding: 20px; }
+}

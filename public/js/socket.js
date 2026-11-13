@@ -21,6 +21,7 @@ export function connectSocket(store, hud) {
       const startedAt = Date.now();
       try {
         const r = await fetch('/api/state');
+        if (r.status === 401) { location.replace('/login'); return; }
         if (!r.ok) return;
         // WS sudah mengirim data lebih segar selagi fetch jalan: abaikan.
         if (lastWsMsgAt > startedAt) return;
@@ -52,9 +53,10 @@ export function connectSocket(store, hud) {
       let ticket = null;
       if (response.ok) {
         const data = await response.json();
-        if (typeof data.ticket !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(data.ticket)) throw new Error('Invalid WebSocket ticket');
+        if (data.ticket !== null && (typeof data.ticket !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(data.ticket))) throw new Error('Invalid WebSocket ticket');
         ticket = data.ticket;
-      } else if (response.status !== 404) throw new Error('WebSocket authorization failed');
+      } else if (response.status === 401) { location.replace('/login'); return; }
+      else if (response.status !== 404) throw new Error('WebSocket authorization failed');
       if (!alive) return;
       ws = ticket ? new WebSocket(url, ['agent-dorm', ticket]) : new WebSocket(url);
     } catch {

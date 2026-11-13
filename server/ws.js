@@ -3,9 +3,13 @@
  * @param {any} app fastify
  * @param {{ store: any, boss: any, director?: any }} deps
  */
-export function registerWs(app, { store, boss, director }) {
+export function registerWs(app, { store, boss, director, auth }) {
   /** @type {Set<any>} */
   const clients = new Set();
+  const sessionByClient = new WeakMap();
+  auth?.onLogout((id) => {
+    for (const socket of clients) if (sessionByClient.get(socket) === id) socket.close(1008, 'Signed out');
+  });
 
   // Broadcast tiap notifikasi store
   store.subscribe((msg) => {
@@ -28,6 +32,10 @@ export function registerWs(app, { store, boss, director }) {
   function broadcast(obj) {
     const s = JSON.stringify(obj);
     for (const ws of clients) {
+      if (auth && !auth.isSessionValid(sessionByClient.get(ws))) {
+        ws.close(1008, 'Session expired');
+        continue;
+      }
       try {
         ws.send(s);
       } catch {
@@ -36,7 +44,8 @@ export function registerWs(app, { store, boss, director }) {
     }
   }
 
-  app.get('/ws', { websocket: true }, (socket) => {
+  app.get('/ws', { websocket: true }, (socket, req) => {
+    sessionByClient.set(socket, req.dormSessionId);
     clients.add(socket);
     try {
       socket.send(JSON.stringify({ type: 'hello', serverTime: new Date().toISOString(), meta: store.getMeta() }));
@@ -54,6 +63,10 @@ export function registerWs(app, { store, boss, director }) {
   // Ping tiap 30 dtk; client yang mati akan drop otomatis
   setInterval(() => {
     for (const ws of [...clients]) {
+      if (auth && !auth.isSessionValid(sessionByClient.get(ws))) {
+        ws.close(1008, 'Session expired');
+        continue;
+      }
       try {
         ws.send(JSON.stringify({ type: 'ping', serverTime: new Date().toISOString() }));
       } catch {

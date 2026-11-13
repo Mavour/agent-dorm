@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111019">
+  <title>Masuk — Agent Dorm</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="dorm-scene" aria-label="Asrama para agen">
+      <img class="room" src="/assets/background.jpg" alt="" fetchpriority="high">
+      <div class="scene-shade"></div>
+      <a class="brand" href="/login"><span class="brand-mark" aria-hidden="true">侍</span><span>Agent Dorm<small>ROOM 01</small></span></a>
+      <div class="scene-copy"><span class="eyebrow">TEMPAT PARA AGEN PULANG</span><h1>Semua agen.<br> Satu ruangan.</h1><p>Kabar bot, portofolio, dan aktivitas harian.<br>Semuanya berkumpul di sini.</p></div>
+      <div class="residents" aria-hidden="true">
+        <img src="/assets/sprites/pengelola-porto.png" alt="">
+        <img src="/assets/sprites/exit-bot.png" alt="">
+        <img class="boss" src="/assets/sprites/boss/bos.png" alt="">
+        <img src="/assets/sprites/lp-watcher.png" alt="">
+        <img src="/assets/sprites/bot-alert.png" alt="">
+      </div>
+      <div class="scene-footer"><span class="lantern-dot"></span> Lampu menyala. Para agen menunggu.</div>
+    </section>
+    <section class="login-panel" aria-labelledby="login-title">
+      <div class="welcome-tag"><span></span> SELAMAT DATANG KEMBALI</div>
+      <h2 id="login-title">Masuk ke Dorm</h2>
+      <p class="intro">Buka pintu, lihat kabar para agenmu.</p>
+      <form id="login-form" action="/api/auth/login" method="post">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="200" placeholder="Username kamu" required>
+        <label for="password">Password</label>
+        <div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" placeholder="Masukkan password" required><button id="toggle-password" type="button" aria-label="Tampilkan password" aria-pressed="false">Lihat</button></div>
+        <label class="remember" for="remember"><input id="remember" name="remember" type="checkbox" checked><span>Ingat perangkat ini<small>Tetap masuk selama 30 hari.</small></span></label>
+        <p id="login-error" class="login-error" role="alert" hidden></p>
+        <button class="submit" type="submit"><span id="submit-label">Masuk ke Dorm</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="account-note">Gunakan akun Dorm yang sudah kamu atur.</p>
+      <div class="panel-footer"><span>AGENT DORM</span><span>おかえり · Selamat pulang</span></div>
+      <noscript>Aktifkan JavaScript untuk masuk dan membuka Dorm.</noscript>
+    </section>
+  </main>
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>

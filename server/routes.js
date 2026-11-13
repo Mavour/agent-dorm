@@ -14,6 +14,7 @@ export function registerRoutes(app, { config, store, boss }) {
     serverTime: new Date().toISOString(),
     advisorMode: config.advisorMode,
     demoControls: config.demoControls,
+    authEnabled: !!(config.basicUser && config.basicPass),
   }));
 
   app.get('/api/agents/:id', async (req, reply) => {

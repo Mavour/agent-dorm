@@ -359,6 +359,8 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
   z-index: 60;
   white-space: pre;
 }
+.logout-btn { min-height: 32px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 7px; background: #22222e; color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; }
+.logout-btn:hover, .logout-btn:focus-visible { color: var(--text); border-color: var(--amber); }
 @media (max-width: 700px) {
   :root { --hud-height: 76px; --hint-height: 44px; }
   #hud { flex-wrap: wrap; padding: 6px 10px; gap: 4px; }

@@ -6,3 +6,4 @@ node_modules/
 agent-dorm-fix.zip
 audio-preview/
 visual-check/
+.data/
