@@ -82,6 +82,7 @@ export function createPopup(opts) {
 
     // Alert terbuka di atas (dibungkus agar bisa refresh ringan)
     const alertsWrap = document.createElement('div');
+    alertsWrap.className = 'popup-alerts';
     fillAlerts(alertsWrap, snap.alerts || []);
     box.appendChild(alertsWrap);
 

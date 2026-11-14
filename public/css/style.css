@@ -313,6 +313,26 @@ body.show-hit .char .hit {
 .chat-pending { display: flex; flex-direction: column; gap: 6px; opacity: 0.75; }
 .portfolio-panel details { margin-top: 14px; }
 .portfolio-panel summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.popup.karo-chat-open {
+  display: flex; flex-direction: column; overflow: hidden;
+  top: calc(var(--hud-height) + 8px) !important;
+  height: min(75dvh, 680px);
+  max-height: calc(100dvh - var(--hud-height) - var(--hint-height) - 16px);
+}
+.karo-chat-open > header { position: static; flex-shrink: 0; }
+.karo-chat-open > p, .karo-chat-open > .popup-alerts, .karo-chat-open > footer { display: none; }
+.portfolio-chat-active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.portfolio-chat-active > .tabs { flex-shrink: 0; }
+.karo-conversation { flex-direction: column; flex: 1; min-height: 0; }
+.karo-conversation > h3 { flex-shrink: 0; margin-top: 4px; }
+.karo-conversation .karo-ai-status { flex-shrink: 0; max-height: 48px; overflow-y: auto; margin: 4px 0; font-size: 11px; }
+.karo-conversation .karo-history { flex: 1; min-height: 0; max-height: none; margin: 6px 0; }
+.karo-history-status { flex-shrink: 0; margin: 3px 0; font-size: 11px; }
+.karo-chat-tools { flex-shrink: 1; min-height: 24px; max-height: 110px; overflow-y: auto; }
+.karo-chat-tools details { margin-top: 4px; }
+.karo-conversation .askrow { flex-shrink: 0; margin: 8px 0 0; }
+.karo-conversation .askrow input { min-width: 0; min-height: 42px; color: var(--text); font-size: 16px; }
+.karo-conversation .askrow button { min-height: 42px; color: var(--text); }
 .chat .q { align-self: flex-end; background: #2b3a55; padding: 6px 10px; border-radius: 10px; font-size: 13px; }
 .chat .a { align-self: flex-start; background: #1c1c28; padding: 6px 10px; border-radius: 10px; font-size: 13px; }
 .chat .typing-indicator { display: flex; align-items: center; gap: 5px; padding: 13px 16px; }
@@ -397,6 +417,7 @@ button.copy { background: #22222e; color: var(--text); border: 1px solid var(--l
     border-radius: 14px 14px 0 0;
     max-height: 60vh;
   }
+  .popup.karo-chat-open { top: auto !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .char .sprite { animation: none !important; }

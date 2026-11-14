@@ -25,6 +25,7 @@ export function renderPortfolio(body, snap, h) {
   const tabs = h.el('div', 'tabs');
   /** @type {HTMLElement[]} */
   const panes = [];
+  let chatOpened = false;
   const names = ['Ringkasan', 'Transaksi', 'Saran'];
   names.forEach((n, i) => {
     const b = h.el('button');
@@ -37,10 +38,17 @@ export function renderPortfolio(body, snap, h) {
     panes.push(pane);
     b.addEventListener('click', (e) => {
       e.stopPropagation();
+      body.classList.toggle('portfolio-chat-active', i === 2);
+      body.closest('.popup')?.classList.toggle('karo-chat-open', i === 2);
       names.forEach((_, j) => {
-        panes[j].style.display = j === i ? 'block' : 'none';
+        panes[j].style.display = j === i ? (j === 2 ? 'flex' : 'block') : 'none';
         tabs.children[j].setAttribute('aria-selected', j === i ? 'true' : 'false');
       });
+      if (i === 2 && !chatOpened) {
+        const history = panes[2].querySelector('.karo-history');
+        history.scrollTop = history.scrollHeight;
+        chatOpened = true;
+      }
     });
     tabs.appendChild(b);
   });
@@ -144,8 +152,9 @@ function renderTx(pane, snap, h) {
 
 /** @param {HTMLElement} pane @param {any} snap @param {any} h */
 function renderAdvice(pane, snap, h) {
+  pane.classList.add('karo-conversation');
   pane.appendChild(h.t('h3', 'Obrolan Karō'));
-  pane.appendChild(h.t('p', window.__ADVISOR_MODE__ === 'llm' ? 'Karo akan yapping sendiri sekitar tiap 2 jam berdasarkan kabar keuanganmu. Riwayat tersimpan dan bisa dibaca lagi.' : window.__ADVISOR_CONFIGURED__ ? 'Chat AI belum terhubung. Isi OPENROUTER_API_KEY di .env server, lalu restart Dorm.' : 'Saran otomatis berdasarkan data yang diterima.', 'muted'));
+  const intro = h.t('p', window.__ADVISOR_MODE__ === 'llm' ? 'Karo akan yapping sendiri sekitar tiap 2 jam berdasarkan kabar keuanganmu. Riwayat tersimpan dan bisa dibaca lagi.' : window.__ADVISOR_CONFIGURED__ ? 'Chat AI belum terhubung. Isi OPENROUTER_API_KEY di .env server, lalu restart Dorm.' : 'Saran otomatis berdasarkan data yang diterima.', 'muted');
   const aiState = h.t('p', 'Memeriksa status AI…', 'muted karo-ai-status');
   pane.appendChild(aiState);
   function failureText(reason) {
@@ -159,7 +168,9 @@ function renderAdvice(pane, snap, h) {
     }[reason] || 'Layanan AI belum berhasil menjawab.';
   }
   const automatic = h.el('details');
-  automatic.appendChild(h.t('summary', 'Lihat perhitungan otomatis'));
+  automatic.appendChild(h.t('summary', 'Info & perhitungan'));
+  automatic.appendChild(intro);
+  automatic.appendChild(h.t('p', 'Detail data dan peringatannya bisa dilihat di tab Ringkasan.', 'muted'));
   const advBox = h.el('div');
   automatic.appendChild(advBox);
   fetch('/api/portfolio/advice')
@@ -184,6 +195,8 @@ function renderAdvice(pane, snap, h) {
   chat.setAttribute('role', 'log');
   pane.appendChild(chat);
   const historyStatus = h.t('p', 'Memuat riwayat…', 'muted');
+  historyStatus.classList.add('karo-history-status');
+  historyStatus.title = 'Menyimpan 500 pesan terbaru. Pesan lama diganti bertahap; kamu tetap bisa mengirim chat baru.';
   pane.appendChild(historyStatus);
   const entries = new Map();
   let pending = null;
@@ -196,6 +209,7 @@ function renderAdvice(pane, snap, h) {
     return row;
   }
   function paint(messages = []) {
+    const previousTop = chat.scrollTop;
     const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 60;
     for (const message of messages) entries.set(message.id, message);
     const ordered = [...entries.values()].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts)).slice(-500);
@@ -203,8 +217,8 @@ function renderAdvice(pane, snap, h) {
     chat.replaceChildren();
     for (const message of ordered) { entries.set(message.id, message); chat.appendChild(bubble(message)); }
     if (pending) chat.appendChild(pending);
-    if (nearBottom) chat.scrollTop = chat.scrollHeight;
-    historyStatus.textContent = entries.size ? 'Riwayat tersimpan · maksimal 500 pesan terakhir.' : 'Belum ada obrolan. Yapping pertama akan muncul setelah Karo membaca data terbaru.';
+    chat.scrollTop = nearBottom ? chat.scrollHeight : previousTop;
+    historyStatus.textContent = entries.size ? 'Riwayat tersimpan di server.' : 'Belum ada obrolan. Mulai dengan pertanyaanmu.';
   }
   async function loadHistory() {
     try {
@@ -242,6 +256,7 @@ function renderAdvice(pane, snap, h) {
     }
     pending.appendChild(typing);
     paint();
+    chat.scrollTop = chat.scrollHeight;
     try {
       const r = await fetch('/api/portfolio/ask', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -270,7 +285,13 @@ function renderAdvice(pane, snap, h) {
     });
     chips.appendChild(b);
   }
-  pane.appendChild(chips);
+  const tools = h.el('div', 'karo-chat-tools');
+  const quick = h.el('details');
+  quick.appendChild(h.t('summary', 'Pertanyaan cepat'));
+  quick.appendChild(chips);
+  tools.appendChild(quick);
+  tools.appendChild(automatic);
+  pane.appendChild(tools);
 
   const ask = h.el('form', 'askrow');
   const inp = document.createElement('input');
@@ -294,7 +315,6 @@ function renderAdvice(pane, snap, h) {
   ask.appendChild(inp);
   ask.appendChild(btn);
   pane.appendChild(ask);
-  pane.appendChild(automatic);
 }
 
 function cell(h, label, value) {
