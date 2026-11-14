@@ -163,6 +163,7 @@ sesi lama. Simpan folder `.data/` pada volume persisten saat deploy; isinya
 hash sesi, bukan password atau token mentah. Gunakan HTTPS di reverse proxy.
 
 Untuk data Karō asli, lihat [panduan Fintrack lokal](docs/FINTRACK_LOCAL.md).
+Untuk posisi LP Robinhood Chain, lihat [integrasi Hood LP Watcher](docs/HOOD_LPWATCHER.md).
 
 ```bash
 npm install -g pm2

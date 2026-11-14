@@ -265,6 +265,8 @@ body.show-hit .char .hit {
 .portfolio-panel .kpi .v { overflow-wrap: anywhere; }
 .portfolio-panel .crow-top > span { min-width: 0; overflow-wrap: anywhere; }
 .portfolio-panel .crow-top > span:last-child { text-align: right; max-width: 60%; flex-shrink: 0; }
+.lpwatcher-panel .kpi .cell { min-width: 0; }
+.lpwatcher-panel .kpi .v, .lpwatcher-panel .crow-top, .lpwatcher-panel .row { overflow-wrap: anywhere; }
 .pos { color: var(--ok); }
 .neg { color: var(--err); }
 .row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
