@@ -30,6 +30,13 @@ npm run smoke            # smoke test websocket (server harus sudah jalan)
 Tambahkan `?debug=1` di URL untuk overlay FPS + status agen.
 Tekan `D` atau klik tombol `DEMO` untuk panel demo (hanya bila `DEMO_CONTROLS=true`).
 
+Musik latar menggunakan `public/audio/japan-rock-loop.mp3`: potongan 5 menit
+pertama dari audio pilihan pengguna, MP3 stereo 96 kbps (sekitar 3,6 MB), dengan
+fade singkat di awal/akhir dan pemutaran berulang. Musik mulai setelah interaksi
+pertama, dijeda saat tab tersembunyi, dan mengikuti tombol suara atau shortcut
+`M`. Efek duel tetap aktif tanpa menumpuk musik synth. File diputar lewat elemen
+audio browser tanpa mendekode seluruh lagu ke buffer JavaScript.
+
 ## Sketsa arsitektur
 
 ```

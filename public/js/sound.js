@@ -1,21 +1,13 @@
 /**
- * Synth suara tanpa aset (Web Audio murni). Aman diimpor di Node: semua
- * fungsi publik no-op tanpa AudioContext. Musik mulai setelah gesture
- * pertama (aturan autoplay browser).
+ * Musik latar MP3 berulang + efek suara Web Audio. Musik dimulai setelah
+ * interaksi pertama, mengikuti tombol mute, dan dijeda saat tab tersembunyi.
+ * createEngine tetap tersedia untuk sintesis dan pengujian efek suara.
  *
- * Isi:
- *  - Musik TENANG: petikan lembut di pentatonik mayor C D E G A,
- *    dengan iringan akor mayor hangat dan reverb ringan. Melodi tanya-jawab
- *    dengan motif berulang, ketukan tetap, dan jeda akhir frasa.
- *  - Musik LATIHAN (saat duel): taiko ringan + petikan mayor + ketukan kayu
- *    pedang yang dijatuhkan TEPAT di ketukan (bukan acak). Masuk/keluar
- *    dengan crossfade dan penutup lembut.
- *  - SFX: whoosh dash (durasi mengikuti burst), benturan pertama, dentang.
- *
- * Arsitektur: komposisi + penjadwalan ada di createEngine(ac) (murni
- * terhadap objek AudioContext; bisa diuji dengan konteks palsu atau
- * OfflineAudioContext). Wrapper realtime di bawah hanya mengurus konteks,
- * mute, tab tersembunyi, dan timer lookahead.
+ * Latar: lima menit pertama japan rock, MP3 96 kbps dengan fade di ujung.
+ * HTMLAudioElement memutar file tanpa mendekode seluruh lagu ke buffer JS.
+ * SFX: whoosh dash, benturan pertama, dan dentang tetap memakai createEngine.
+ * Komposer synth pada createEngine dipertahankan untuk kompatibilitas;
+ * wrapper realtime tidak menjadwalkannya bersama musik rekaman.
  */
 
 const STORE_KEY = 'agent-dorm-sound';
@@ -482,11 +474,30 @@ function makeImpulse(ac, rng, seconds, decay) {
 
 let ac = null;
 let engine = null;
-let timer = null;
-let duelOn = false;
+let music = null;
+let unlocked = false;
 const MASTER_GAIN = 0.6;
-const LOOKAHEAD_S = 0.16;
-const TICK_MS = 25;
+const MUSIC_VOLUME = 0.22;
+
+function syncSound() {
+  const quiet = isMuted() || !!globalThis.document?.hidden;
+  if (engine && ac) engine.setMasterGain(quiet ? 0 : MASTER_GAIN, ac.currentTime);
+  if (!music || !unlocked) return;
+  if (quiet) music.pause();
+  else if (music.paused) music.play()?.catch(() => {});
+}
+
+function musicTrack() {
+  if (music) return music;
+  if (typeof globalThis.Audio !== 'function') return null;
+  music = new globalThis.Audio();
+  music.preload = 'none';
+  music.src = '/audio/japan-rock-loop.mp3';
+  music.loop = true;
+  music.volume = MUSIC_VOLUME;
+  globalThis.document?.addEventListener('visibilitychange', syncSound);
+  return music;
+}
 
 export function isMuted() {
   if (mutedCache !== null) return mutedCache;
@@ -506,7 +517,7 @@ export function setMuted(m) {
   } catch {
     /* abaikan */
   }
-  if (engine && ac) engine.setMasterGain(mutedCache ? 0 : MASTER_GAIN, ac.currentTime);
+  syncSound();
   return mutedCache;
 }
 
@@ -519,7 +530,7 @@ function ctx() {
   if (!AC) return null;
   try {
     ac = new AC();
-    engine = createEngine(ac, { masterGain: isMuted() ? 0 : MASTER_GAIN });
+    engine = createEngine(ac, { masterGain: isMuted() || globalThis.document?.hidden ? 0 : MASTER_GAIN });
   } catch {
     ac = null;
     engine = null;
@@ -528,29 +539,13 @@ function ctx() {
   return ac;
 }
 
-function tick() {
-  if (!ac || !engine) return;
-  if (isMuted()) return;
-  if (globalThis.document && globalThis.document.hidden) return;
-  if (ac.state !== 'running') return;
-  try {
-    engine.scheduleUntil(ac.currentTime + LOOKAHEAD_S, ac.currentTime);
-  } catch (err) {
-    console.warn('[sound] gagal menjadwalkan:', err && err.message ? err.message : err);
-  }
-}
-
-function startMusic() {
-  if (timer || !ac) return;
-  timer = setInterval(tick, TICK_MS);
-}
-
 /** Siapkan konteks + mulai musik. Panggil dari gesture pertama. */
 export function unlock() {
-  if (!ctx()) return false;
-  startMusic();
-  if (duelOn && engine && !engine.isBattle()) engine.startBattle(ac.currentTime + 0.05);
-  return true;
+  const track = musicTrack();
+  const context = ctx();
+  unlocked = true;
+  syncSound();
+  return !!(track || context);
 }
 
 /** Debing pedang (SFX tunggal). @returns {boolean} true bila berbunyi */
@@ -581,12 +576,9 @@ export function dashImpact() {
 }
 
 /**
- * Masuk/keluar musik tempur (crossfade dengan musik tenang).
+ * Musik rekaman tetap berjalan saat duel; efek benturan diputar terpisah.
  * @param {boolean} on
  */
-export function duelMode(on) {
-  duelOn = !!on;
-  if (!ac || !engine) return; // belum di-unlock: unlock() akan menyusul
-  if (duelOn) engine.startBattle(ac.currentTime + 0.05);
-  else engine.stopBattle(ac.currentTime + 0.02);
+export function duelMode(_on) {
+  // Keep the background track continuous instead of layering synth music.
 }
