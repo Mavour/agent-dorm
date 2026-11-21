@@ -7,12 +7,15 @@ import { createExitbotDummy } from './dummy/exitbot.js';
 import { createLpwatcherDummy } from './dummy/lpwatcher.js';
 import { createAlertDummy } from './dummy/alert.js';
 import { createPortfolioDummy } from './dummy/portfolio.js';
+import { createBravonoidDummy, createKawarabanDummy } from './dummy/previews.js';
 
 const DUMMY_FACTORY = {
   exitbot: createExitbotDummy,
   lpwatcher: createLpwatcherDummy,
   alert: createAlertDummy,
   portfolio: createPortfolioDummy,
+  bravonoid: createBravonoidDummy,
+  kawaraban: createKawarabanDummy,
 };
 
 /**

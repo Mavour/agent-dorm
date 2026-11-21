@@ -198,9 +198,8 @@ function setupDemo(agents, manifest, activities) {
     sec.style.cssText = 'font-size:11px;margin-top:6px;';
     sec.textContent = 'Aktivitas';
     panel.appendChild(sec);
-    const order = ['exitbot', 'portfolio', 'alert', 'lpwatcher'];
     const allActs = resolveActivities(manifest);
-    for (const aid of order) {
+    for (const aid of Object.keys(manifest.agents)) {
       const names = Object.keys(allActs[aid] || {});
       const aname = (manifest.agents[aid] && manifest.agents[aid].name) || aid;
       for (const n of names) {

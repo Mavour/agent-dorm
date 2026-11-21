@@ -5,7 +5,7 @@ import { loadDotEnv } from './env.js';
 
 loadDotEnv('.env');
 
-const AGENTS = ['exitbot', 'lpwatcher', 'alert', 'portfolio'];
+const AGENTS = ['exitbot', 'lpwatcher', 'alert', 'portfolio', 'bravonoid', 'kawaraban'];
 
 /**
  * @param {string} v

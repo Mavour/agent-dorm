@@ -175,6 +175,82 @@
           ]
         ]
       }
+    },
+    "bravonoid": {
+      "name": "Bravonoid",
+      "description": "Status dan riwayat buka-tutup posisi LP Meteora DLMM di Solana.",
+      "sprite": "sprites/bravonoid.png",
+      "size": [
+        217,
+        232
+      ],
+      "pngSize": [
+        434,
+        464
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "iconAnchor": [
+        0.5,
+        0
+      ],
+      "feet": [
+        104.5,
+        231.5
+      ],
+      "walkRig": {
+        "bandTop": 202.5,
+        "feet": [
+          [
+            71.5,
+            106
+          ],
+          [
+            103,
+            138
+          ]
+        ]
+      }
+    },
+    "kawaraban": {
+      "name": "Kawaraban",
+      "description": "Ide dan draf konten X untuk kamu pilih, edit, dan posting sendiri.",
+      "sprite": "sprites/kawaraban.png",
+      "size": [
+        143,
+        210
+      ],
+      "pngSize": [
+        286,
+        420
+      ],
+      "anchor": [
+        0.5,
+        1
+      ],
+      "iconAnchor": [
+        0.5,
+        0
+      ],
+      "feet": [
+        78.5,
+        209.5
+      ],
+      "walkRig": {
+        "bandTop": 183,
+        "feet": [
+          [
+            40,
+            80
+          ],
+          [
+            77,
+            117.5
+          ]
+        ]
+      }
     }
   },
   "boss": {
@@ -709,6 +785,189 @@
         ],
         "fps": 3,
         "mode": "pingpong",
+        "faces": "front"
+      }
+    },
+    "bravonoid": {
+      "buka": {
+        "frames": [
+          "activities/bravonoid/buka-1.png",
+          "activities/bravonoid/buka-2.png",
+          "activities/bravonoid/buka-3.png"
+        ],
+        "size": [
+          260,
+          238
+        ],
+        "pngSize": [
+          520,
+          476
+        ],
+        "feet": [
+          108.5,
+          232.5
+        ],
+        "fps": 4,
+        "mode": "once",
+        "faces": "front"
+      },
+      "jalan": {
+        "frames": [
+          "activities/bravonoid/jalan-1.png",
+          "activities/bravonoid/jalan-2.png",
+          "activities/bravonoid/jalan-3.png",
+          "activities/bravonoid/jalan-4.png"
+        ],
+        "size": [
+          175,
+          238
+        ],
+        "pngSize": [
+          350,
+          476
+        ],
+        "feet": [
+          112.75,
+          234.5
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "strategi": {
+        "frames": [
+          "activities/bravonoid/strategi-1.png",
+          "activities/bravonoid/strategi-2.png",
+          "activities/bravonoid/strategi-3.png"
+        ],
+        "size": [
+          224,
+          238
+        ],
+        "pngSize": [
+          448,
+          476
+        ],
+        "feet": [
+          108.75,
+          235
+        ],
+        "fps": 3,
+        "mode": "pingpong",
+        "faces": "front"
+      },
+      "tutup": {
+        "frames": [
+          "activities/bravonoid/tutup-1.png",
+          "activities/bravonoid/tutup-2.png",
+          "activities/bravonoid/tutup-3.png"
+        ],
+        "size": [
+          252,
+          241
+        ],
+        "pngSize": [
+          504,
+          482
+        ],
+        "feet": [
+          123,
+          237.5
+        ],
+        "fps": 4,
+        "mode": "once",
+        "faces": "front"
+      }
+    },
+    "kawaraban": {
+      "cetak": {
+        "frames": [
+          "activities/kawaraban/cetak-1.png",
+          "activities/kawaraban/cetak-2.png",
+          "activities/kawaraban/cetak-3.png"
+        ],
+        "size": [
+          174,
+          256
+        ],
+        "pngSize": [
+          348,
+          512
+        ],
+        "feet": [
+          98.5,
+          253
+        ],
+        "fps": 4,
+        "mode": "once",
+        "faces": "front"
+      },
+      "jalan": {
+        "frames": [
+          "activities/kawaraban/jalan-1.png",
+          "activities/kawaraban/jalan-2.png",
+          "activities/kawaraban/jalan-3.png",
+          "activities/kawaraban/jalan-4.png"
+        ],
+        "size": [
+          215,
+          216
+        ],
+        "pngSize": [
+          430,
+          432
+        ],
+        "feet": [
+          115.5,
+          212.5
+        ],
+        "fps": 8,
+        "mode": "loop",
+        "faces": "right"
+      },
+      "menulis": {
+        "frames": [
+          "activities/kawaraban/menulis-1.png",
+          "activities/kawaraban/menulis-2.png",
+          "activities/kawaraban/menulis-3.png",
+          "activities/kawaraban/menulis-4.png"
+        ],
+        "size": [
+          187,
+          220
+        ],
+        "pngSize": [
+          374,
+          440
+        ],
+        "feet": [
+          84.5,
+          217
+        ],
+        "fps": 3,
+        "mode": "pingpong",
+        "faces": "front"
+      },
+      "umumkan": {
+        "frames": [
+          "activities/kawaraban/umumkan-1.png",
+          "activities/kawaraban/umumkan-2.png",
+          "activities/kawaraban/umumkan-3.png"
+        ],
+        "size": [
+          175,
+          225
+        ],
+        "pngSize": [
+          350,
+          450
+        ],
+        "feet": [
+          72.75,
+          221.5
+        ],
+        "fps": 3,
+        "mode": "once",
         "faces": "front"
       }
     }

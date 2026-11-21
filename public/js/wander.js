@@ -9,9 +9,8 @@ import { walkBand, blockedRect, isFree } from './path-logic.js';
  * @param {number} H tinggi stage
  */
 export function homeFor(id, W, H) {
-  const order = ['exitbot', 'portfolio', 'alert', 'lpwatcher'];
-  const frac = [0.18, 0.36, 0.64, 0.82];
-  return { x: frac[order.indexOf(id)] * W, y: 0.9 * H };
+  const frac = { kawaraban: 0.08, exitbot: 0.18, portfolio: 0.36, alert: 0.64, lpwatcher: 0.82, bravonoid: 0.92 };
+  return { x: (frac[id] ?? 0.5) * W, y: 0.9 * H };
 }
 
 /**

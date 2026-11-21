@@ -7,9 +7,18 @@ import { renderExitbot } from './panels/exitbot.js';
 import { renderLpwatcher } from './panels/lpwatcher.js';
 import { renderAlert } from './panels/alert.js';
 import { renderPortfolio } from './panels/portfolio.js';
+import { renderBravonoid } from './panels/bravonoid.js';
+import { renderKawaraban } from './panels/kawaraban.js';
 import { clockOf } from './format.js';
 
-const RENDER = { exitbot: renderExitbot, lpwatcher: renderLpwatcher, alert: renderAlert, portfolio: renderPortfolio };
+const RENDER = {
+  exitbot: renderExitbot,
+  lpwatcher: renderLpwatcher,
+  alert: renderAlert,
+  portfolio: renderPortfolio,
+  bravonoid: renderBravonoid,
+  kawaraban: renderKawaraban,
+};
 
 /**
  * @param {object} opts {store, stage, manifest}
@@ -180,8 +189,8 @@ export function createPopup(opts) {
     if (e.key === 'Escape') close();
   });
 
-  store.subscribe((kind) => {
-    if ((kind === 'snapshot' || kind === 'snapshot_all') && openId) refresh();
+  store.subscribe((kind, payload) => {
+    if (kind === 'snapshot_all' || (kind === 'snapshot' && payload.agentId === openId)) refresh();
   });
 
   return { open, close, isOpen, get openId() { return openId; } };

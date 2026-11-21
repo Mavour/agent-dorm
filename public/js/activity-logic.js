@@ -73,6 +73,8 @@ export const IDLE_ACTIVITIES = {
     { name: 'ngantuk', weight: 1, dur: [6000, 12000] },
     { name: 'tombak', weight: 1, dur: null },
   ],
+  bravonoid: [{ name: 'strategi', weight: 1, dur: [6000, 10000] }],
+  kawaraban: [{ name: 'menulis', weight: 1, dur: [6000, 10000] }],
 };
 const ONCE_HOLD_MS = 1000;
 

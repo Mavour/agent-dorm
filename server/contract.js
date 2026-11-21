@@ -3,7 +3,7 @@
  * Lihat docs/BOT_API_CONTRACT.md untuk makna tiap field.
  */
 
-export const AGENT_IDS = ['exitbot', 'portfolio', 'alert', 'lpwatcher'];
+export const AGENT_IDS = ['exitbot', 'portfolio', 'alert', 'lpwatcher', 'bravonoid', 'kawaraban'];
 export const STATUSES = ['ok', 'warn', 'error', 'offline'];
 export const EVENT_TYPES = [
   'coin_found',
@@ -129,6 +129,18 @@ export function validateMetrics(agentId, m) {
     for (const k of ['currency', 'netWorthUsd', 'accounts', 'cashflow', 'budget', 'transactions']) req(k);
     if (m.currency !== 'USD') e.push('metrics.currency harus USD');
     if (Array.isArray(m.transactions) && m.transactions.length > 60) e.push('transactions maks 60');
+  } else if (agentId === 'bravonoid') {
+    req('position');
+    if (m.position != null && (typeof m.position.pair !== 'string' || !Number.isFinite(m.position.depositUsd) || !isIso(m.position.openedAt))) {
+      e.push('metrics.position tidak valid');
+    }
+    if (!Array.isArray(m.recentActions) || !m.recentActions.every((a) => typeof a?.message === 'string' && isIso(a.ts))) {
+      e.push('metrics.recentActions tidak valid');
+    }
+  } else if (agentId === 'kawaraban') {
+    if (!Array.isArray(m.ideas) || !m.ideas.every((idea) => typeof idea?.title === 'string' && typeof idea.draft === 'string')) {
+      e.push('metrics.ideas tidak valid');
+    }
   }
   return e;
 }
