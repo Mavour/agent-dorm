@@ -1,3 +1,5 @@
+import { createDojoAnimation } from './dojo-animation.js';
+
 /**
  * Stage: ukuran persis manifest, background, skala contain + letterbox,
  * konversi koordinat stage -> layar untuk lapisan UI.
@@ -18,6 +20,7 @@ export function createStage(manifest) {
   bg.setAttribute('src', '/assets/' + manifest.background);
   bg.style.width = W + 'px';
   bg.style.height = H + 'px';
+  const frameBackground = createDojoAnimation(document.getElementById('dojo-motion'), bg);
 
   const view = { scale: 1, ox: 0, oy: 0 };
 
@@ -38,6 +41,7 @@ export function createStage(manifest) {
     W,
     H,
     manifest,
+    frameBackground,
     /** stage {x,y} -> layar relatif viewport */
     toScreen(x, y) {
       return { x: view.ox + x * view.scale, y: view.oy + y * view.scale };

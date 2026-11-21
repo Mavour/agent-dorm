@@ -135,6 +135,7 @@ async function main() {
     }
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
+    stage.frameBackground(now);
     for (const a of agents) a.frame(now, dt);
     activities.tick(now);
     boss.frame(now);
